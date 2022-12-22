@@ -1,7 +1,7 @@
-from UniTurnip_for_bots.handlers.keyboards import optional_questions, optional_callback_data
+from UniTurnip_for_bots.handlers.keyboards import optional_questions  #, optional_callback_data
 from UniTurnip_for_bots.handlers.tools import read_schema
 from UniTurnip_for_bots.handlers.constants import DEFAULT_SCHEME
-from UniTurnip_for_bots.handlers.filters import Filter
+# from UniTurnip_for_bots.handlers.filters import Filter
 
 
 class UniTurnip:
@@ -19,19 +19,19 @@ class UniTurnip:
         self.processing = False
         self.current_question = None
         self.current_keyboard = None
-        self.current_callback_data = ['non']
+        # self.current_callback_data = ['non']
         # stores user responses
         self.user_answers = {}
 
-        self.Filter = Filter(self.current_callback_data)
+        # self.Filter = Filter(self.current_callback_data)
 
-    def read_json(self, demo_schema: str | dict):
+    def read_json(self, schema: str | dict):
         '''
         Создает опрос на основе переданной ему json схемы
-        :param demo_schema: Сюда передается json схема
+        :param schema: Сюда передается json схема
         :return: Данная функция нечего не возвращает, но с ее помощью в памяти сохраняются настройки для создания опроса
         '''
-        schema = read_schema(demo_schema)
+        schema = read_schema(schema)
         self.get_parameters_from_schema(schema)
         self.scheme_not_definite = False
 
@@ -49,32 +49,26 @@ class UniTurnip:
     def next(self):
         """
         Задать следующий вопрос
-        :return:
         """
         self.current_state_num += 1
         self.initialization()
-        print(f'=========\n'
-              f'{self.current_keyboard}\n'
-              f'{self.current_question}\n'
-              f'{self.current_callback_data}\n')
 
     def back(self):
         """
         Вернутся к прошлому вопросу
-        :return:
         """
         self.current_state_num -= 1
         self.initialization()
 
-    def answer(self, answer):
+    def answer(self, user_answer):
         """
         Принимает ответы на вопросы от пользователя
-        :param answer:
+        :param user_answer:
         :return:
         """
-        answer_info = self.response_processing(answer)
+        answer_info = self.response_processing(user_answer)
         if answer_info is True:
-            self.user_answers[self.current_state_name] = answer
+            self.user_answers[self.current_state_name] = user_answer
         elif answer_info is False:
             self.back()
         elif answer_info == 'cancel':
@@ -95,11 +89,11 @@ class UniTurnip:
         # keyboard
         if self.current_state_name not in self.required:
             self.current_keyboard = optional_questions
-            self.current_callback_data = optional_callback_data
-            self.Filter.callback_data = optional_callback_data
+            # self.current_callback_data = optional_callback_data
+            # self.Filter.callback_data = optional_callback_data
         else:
-            self.current_callback_data = ['non']
-            self.Filter.callback_data = self.current_callback_data
+            # self.current_callback_data = ['non']
+            # self.Filter.callback_data = self.current_callback_data
             self.current_keyboard = None
 
     def get_parameters_from_schema(self, schema: dict):

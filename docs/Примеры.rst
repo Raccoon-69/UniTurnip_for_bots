@@ -1,0 +1,23 @@
+Примеры
+=======
+
+Здесь описаны способы интеграции данной библиотеки в бота
+
+
+Пример обработки текстового сообщения
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Вот стандартный пример использования::
+
+	@dp.message_handler(state=Interview.interview)
+	async def second_questions(message: types.Message, state: FSMContext):
+	    UniTurnip.answer(message.text)
+	    UniTurnip.next()
+	    if UniTurnip.processing:
+	        await message.answer(Turnip.current_question, reply_markup=UniTurnip.current_keyboard)
+	    else:
+	        await message.answer('Poll completed!')
+	        await state.reset_state()
+
+Это стандарнтый message_handler из aiogram который будет отрабатывать каждый раз, когда ответом на вопрос должно быть текстовое сообщение
+И не смотря на сложность и длинную опроса, если ответом будет текст, то данная функция будет вызываться, сохранять ответ и задавать следующий вопрос, с прикрепленной к нему клавиатурой (если требуется)
