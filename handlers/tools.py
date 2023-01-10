@@ -1,13 +1,7 @@
 import json
 
 
-def read_schema(demo_schema: str | dict):
-    schema = str_to_dict(demo_schema)
-    schema_error_check(schema)
-    return schema
-
-
-def str_to_dict(string: str | dict):
+def read_schema(string: str | dict):
     if type(string) == str:
         if "'" in string:
             string = string.replace("'", '"')
