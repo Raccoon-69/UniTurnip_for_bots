@@ -7,8 +7,6 @@ class SchemaRead:
         self.last_type = None
         self.required = []
         self.last_key = None
-        self.array_name = None
-        self.stencil = None
 
     def schema_read(self, schema):
         if 'type' in schema.keys() and not self.last_type:
@@ -19,13 +17,12 @@ class SchemaRead:
             if type(value) == dict:
                 if 'type' in value.keys():
                     if value['type'] == 'array':
-                        self.array_name = key
+                        self.last_key = key
                     if value['type'] in ('string', 'boolean'):
                         self.questions_creating(key, value)
                     else:
                         if 'type' in schema.keys():
                             self.last_type = schema['type']
-                            self.last_key = key
                         self.schema_read(value)
                 else:
                     self.schema_read(value)
@@ -42,7 +39,6 @@ class SchemaRead:
             return
         if 'description' in schema.keys():
             question['question'] += f'\n{schema["description"]}'
-        question['last_key'] = self.array_name
         question['required'] = True if param_key in self.required else False
         question['last_type'] = self.last_type
         question['keyboard'], question['keyboard_settings'] = get_keyboard(question)
@@ -57,12 +53,12 @@ class SchemaRead:
                 end_questions = {'question': 'Еще?', 'type': 'settings'}
                 end_questions['keyboard'], end_questions['keyboard_settings'] = get_keyboard(end_questions)
                 dict_with_questions[key+1] = ('End?', end_questions)
-                self.questions_list[-1] = (self.array_name, dict_with_questions)
+                self.questions_list[-1] = (self.last_key, dict_with_questions)
             else:
                 end_questions = {'question': 'Еще?', 'type': 'settings'}
                 end_questions['keyboard'], end_questions['keyboard_settings'] = get_keyboard(end_questions)
                 dict_with_questions = {0: (param_key, question), 1: ('End?', end_questions)}
-                self.questions_list += [(self.array_name, dict_with_questions)]
+                self.questions_list += [(self.last_key, dict_with_questions)]
             return
         self.questions_list += [(param_key, question)]
 

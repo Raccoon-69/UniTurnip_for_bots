@@ -13,7 +13,6 @@ class UniTurnip:
         self.current_state_num = None
         self.current_repetition_num = 0
         self.current_state_name = None
-        self.current_array = None
 
         # for bot use
         self.processing = False
@@ -22,12 +21,6 @@ class UniTurnip:
         # stores user responses
         self.user_answers = {}
 
-        self.last_type = None
-        self.last_required = []
-        self.last_key = None
-
-        self.Read = SchemaRead()
-
     def read_json(self, schema: str | dict):
         '''
         Создает опрос на основе переданной ему json схемы
@@ -35,9 +28,10 @@ class UniTurnip:
         :return: Данная функция нечего не возвращает, но с ее помощью в памяти сохраняются настройки для создания опроса
         '''
         schema = read_schema(schema)
-        self.Read.schema_read(schema)
-        self.questions_list = self.Read.questions_list
-        self.user_answers = self.Read.response_stencil(schema)
+        Schema = SchemaRead()
+        Schema.schema_read(schema)
+        self.questions_list = Schema.questions_list
+        self.user_answers = Schema.response_stencil(schema)
         self.scheme_not_definite = False
 
     def start_survey(self):
@@ -66,6 +60,8 @@ class UniTurnip:
         self.current_state_name = None
         self.current_state_num = None
         self.current_question = None
+        self.questions_list = None
+        self.scheme_not_definite = True
         self.processing = False
 
     def answer(self, user_answer):
@@ -82,7 +78,7 @@ class UniTurnip:
     def initialization(self, num):
         if not self.current_state_num:
             self.current_state_num = [num, -1]  # [main question, additional questions]
-        elif -1 < self.current_state_num[0] < len(self.questions_list):
+        elif self.current_state_num[1] != -1 or -1 < self.current_state_num[0]+1 < len(self.questions_list) or num < 0:
             if self.current_state_num[1] == -1:
                 self.current_state_num[0] = self.current_state_num[0] + num
             else:
@@ -90,7 +86,7 @@ class UniTurnip:
         else:
             return self.end_survey()
 
-        curr_main_q_num, curr_add_q_num = self.current_state_num
+        curr_main_q_num, curr_add_q_num = self.current_state_num[:2]
         q_name, q_data = self.questions_list[curr_main_q_num]
 
         if 'type' not in q_data.keys():  # additional question processing
@@ -101,11 +97,12 @@ class UniTurnip:
                 self.current_state_name = [q_name, add_q_name]
                 return
             elif self.current_state_num[1] != -1:
-                if -1 < curr_add_q_num <= max(q_data.keys()):  # if additional questions are over
-                    self.current_question = q_data[1]
-                    self.current_state_name = q_data[0]
+                if -1 < curr_add_q_num <= max(q_data.keys()):  # if additional questions
+                    add_q_name, add_q_info = q_data[curr_add_q_num]
+                    self.current_question = add_q_info
+                    self.current_state_name = [q_name, add_q_name]
                     return
-                else:
+                else:  # if additional questions are over
                     self.current_state_num = [curr_main_q_num + 1, -1]
 
         if curr_add_q_num == -1 and -1 < curr_main_q_num < len(self.questions_list):
@@ -136,20 +133,21 @@ class UniTurnip:
                 self.current_repetition_num += 1
                 self.back()
         elif button in ('UniTurnipTrue', 'UniTurnipFalse') and 'boolean' in self.current_question['keyboard_settings']:
-            self.user_answers = self.user_answers_save(bool(button.strip('UniTurnip_')), self.user_answers)
+            answer = True if button == 'UniTurnipTrue' else False
+            self.user_answers = self.user_answers_save(answer, self.user_answers)
 
     def user_answers_save(self, answer, all_user_answers):
         answers_cope = dict(all_user_answers)
         for key in answers_cope.keys():
-            if self.current_question['last_key'] is None:
+            if type(self.current_state_name) == str:
                 if key == self.current_state_name:
                     all_user_answers = self.save_answer(all_user_answers, key, answer)
                     return all_user_answers
             else:
-                if key == self.current_question['last_key']:
-                    all_user_answers[key] = self.save_answer(all_user_answers[key], self.current_state_name, answer)
+                if key == self.current_state_name[0]:
+                    all_user_answers[key] = self.save_answer(all_user_answers[key], self.current_state_name[1], answer)
                     return all_user_answers
-        raise KeyError(self.current_state_name, self.current_question['last_key'])
+        raise KeyError(self.user_answers, self.current_state_name)
 
     def save_answer(self, user_answers, key, answer):
         if type(user_answers) == list:
