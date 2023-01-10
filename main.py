@@ -62,6 +62,12 @@ class UniTurnip:
         """
         self.initialization(-1)
 
+    def end_survey(self):
+        self.current_state_name = None
+        self.current_state_num = None
+        self.current_question = None
+        self.processing = False
+
     def answer(self, user_answer):
         """
         Принимает ответы на вопросы от пользователя
@@ -75,38 +81,38 @@ class UniTurnip:
 
     def initialization(self, num):
         if not self.current_state_num:
-            self.current_state_num = [num, -1]
-        if -1 < self.current_state_num[0] < len(self.questions_list):
+            self.current_state_num = [num, -1]  # [main question, additional questions]
+        elif -1 < self.current_state_num[0] < len(self.questions_list):
             if self.current_state_num[1] == -1:
                 self.current_state_num[0] = self.current_state_num[0] + num
             else:
                 self.current_state_num[1] = self.current_state_num[1] + num
-
-            if self.current_state_num[1] == -1 and 'type' not in self.questions_list[self.current_state_num[0]][1].keys():
-                self.current_state_num[1] = 0
-                self.current_array = self.questions_list[self.current_state_num[0]]
-                self.current_question = self.current_array[1][self.current_state_num[1]][1]
-                self.current_state_name = self.current_array[1][self.current_state_num[1]][0]
-                return
-            elif self.current_state_num[1] != -1 and -1 < self.current_state_num[1] <= max(self.current_array[1].keys()):
-                self.current_question = self.current_array[1][self.current_state_num[1]][1]
-                self.current_state_name = self.current_array[1][self.current_state_num[1]][0]
-                return
-            elif self.current_state_num[1] != -1 and -1 < self.current_state_num[1] > max(self.current_array[1].keys()):
-                self.current_state_num[1] = -1
-                self.current_state_num[0] += 1
-                self.current_repetition_num = 0
-
-            if self.current_state_num[1] == -1 and -1 < self.current_state_num[0] < len(self.questions_list):
-                self.current_state_name = self.questions_list[self.current_state_num[0]][0]
-                self.current_question = self.questions_list[self.current_state_num[0]][1]
-            else:
-                self.current_state_num = None
-                self.processing = False
         else:
-            self.current_state_num = None
-            self.processing = False
-            return
+            return self.end_survey()
+
+        curr_main_q_num, curr_add_q_num = self.current_state_num
+        q_name, q_data = self.questions_list[curr_main_q_num]
+
+        if 'type' not in q_data.keys():  # additional question processing
+            if curr_add_q_num == -1:  # if the stage num of the additional question is not specified
+                add_q_name, add_q_info = q_data[0]
+                self.current_state_num = [curr_main_q_num, 0, 0]
+                self.current_question = add_q_info
+                self.current_state_name = [q_name, add_q_name]
+                return
+            elif self.current_state_num[1] != -1:
+                if -1 < curr_add_q_num <= max(q_data.keys()):  # if additional questions are over
+                    self.current_question = q_data[1]
+                    self.current_state_name = q_data[0]
+                    return
+                else:
+                    self.current_state_num = [curr_main_q_num + 1, -1]
+
+        if curr_add_q_num == -1 and -1 < curr_main_q_num < len(self.questions_list):
+            self.current_state_name = q_name
+            self.current_question = q_data
+        else:
+            self.end_survey()
 
     def string_response_processing(self, answer):
         if self.current_question['type'] == 'string':
@@ -127,8 +133,8 @@ class UniTurnip:
         elif button in ('UniTurnipMore', 'UniTurnipNotMore') and 'more' in self.current_question['keyboard_settings']:
             if 'NotMore' not in button:
                 self.current_state_num[1] = -1
-                self.back()
                 self.current_repetition_num += 1
+                self.back()
         elif button in ('UniTurnipTrue', 'UniTurnipFalse') and 'boolean' in self.current_question['keyboard_settings']:
             self.user_answers = self.user_answers_save(bool(button.strip('UniTurnip_')), self.user_answers)
 
