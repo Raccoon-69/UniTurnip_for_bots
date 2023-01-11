@@ -18,7 +18,7 @@ class SchemaRead:
                 if 'type' in value.keys():
                     if value['type'] == 'array':
                         self.last_key = key
-                    if value['type'] in ('string', 'boolean'):
+                    if value['type'] in ('string', 'boolean', 'number', 'integer'):
                         self.questions_creating(key, value)
                     else:
                         if 'type' in schema.keys():

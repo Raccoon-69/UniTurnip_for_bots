@@ -40,14 +40,14 @@ def get_keyboard(settings):
             return boolean_keyboard, ['boolean', 'cancel']
         return boolean_keyboard, ['boolean']
     elif settings['type'] == 'array':
-        return None, []
+        return create_custom_keyboards(settings),
     elif settings['type'] == 'settings':
         return for_more_questions_keyboard, ['more']
 
 
-def create_custom_keyboards(keys):
+def create_custom_keyboards(settings):
     buttons = []
-    for key in keys:
+    for key in settings['enum']:
         buttons += [InlineKeyboardButton(text=key, callback_data=f'UniTurnip_{key}')]
     custom_keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     return custom_keyboard
