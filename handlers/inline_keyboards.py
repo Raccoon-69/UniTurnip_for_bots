@@ -1,6 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-
 optional_keyboard = InlineKeyboardMarkup(
     inline_keyboard=[
         [
@@ -9,45 +8,46 @@ optional_keyboard = InlineKeyboardMarkup(
     ]
 )
 
+def create_custom_keyboards(settings, other=None):
+    if other:
+        keyboard_type = other
+    else:
+        keyboard_type = []
 
-boolean_keyboard = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text='Да', callback_data='UniTurnipTrue'),
-            InlineKeyboardButton(text='Нет', callback_data='UniTurnipFalse')
-        ]
-    ]
-)
-
-
-for_more_questions_keyboard = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text='Еще', callback_data='UniTurnipMore'),
-            InlineKeyboardButton(text='Нет', callback_data='UniTurnipNotMore')
-        ]
-    ]
-)
-
-
-def get_keyboard(settings):
-    if settings['type'] == 'string':
-        if not settings['required']:
-            return optional_keyboard, ['cancel']
-        return None, []
-    elif settings['type'] == 'boolean':
-        if not settings['required']:
-            return boolean_keyboard, ['boolean', 'cancel']
-        return boolean_keyboard, ['boolean']
-    elif settings['type'] == 'array':
-        return create_custom_keyboards(settings),
-    elif settings['type'] == 'settings':
-        return for_more_questions_keyboard, ['more']
+    if 'enum' in settings.keys():
+        buttons = []
+        for key in settings['enum']:
+            buttons[0] += [InlineKeyboardButton(text=key, callback_data=f'UniTurnip_{key}')]
+        buttons += [InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')]
+        keyboard_type += ['custom']
+    else:
+        if settings['type'] in ('string', 'integer', 'number'):
+            keyboard_type = [settings['type']]
+            return assembly_and_required_button(settings, [], keyboard_type, assembly=False)
+        elif settings['type'] == 'more_q':
+            buttons = [[
+                InlineKeyboardButton(text='More', callback_data='UniTurnipMore'),
+                InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')
+            ]]
+            keyboard_type += ['more']
+            return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
+        elif settings['type'] == 'boolean':
+            buttons = [[
+                InlineKeyboardButton(text='Yes', callback_data='UniTurnipTrue'),
+                InlineKeyboardButton(text='No', callback_data='UniTurnipFalse')
+            ]]
+            keyboard_type += ['boolean']
+        else:
+            raise TypeError(settings['type'])
+    return assembly_and_required_button(settings, buttons, keyboard_type)
 
 
-def create_custom_keyboards(settings):
-    buttons = []
-    for key in settings['enum']:
-        buttons += [InlineKeyboardButton(text=key, callback_data=f'UniTurnip_{key}')]
-    custom_keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    return custom_keyboard
+def assembly_and_required_button(settings, buttons, keyboard_type, assembly=True):
+    if not settings['required']:
+        buttons += [[InlineKeyboardButton(text='Cancel', callback_data='UniTurnipCancel')]]
+        keyboard_type += ['cancel']
+        return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
+    if assembly:
+        return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
+    return None, keyboard_type
+

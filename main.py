@@ -33,6 +33,15 @@ class UniTurnip:
         self.questions_list = Schema.questions_list
         self.user_answers = Schema.response_stencil(schema)
         self.scheme_not_definite = False
+        print('===========| question_list |===========')
+        for value in self.questions_list:
+            if list(value[1].keys())[0] == 0:
+                print(value[0])
+                for key, value in value[1].items():
+                    print(f'{key} --- {value}')
+            else:
+                print(value)
+        print('=======================================')
 
     def start_survey(self):
         '''
@@ -49,6 +58,13 @@ class UniTurnip:
         Задать следующий вопрос
         """
         self.initialization(+1)
+
+        if self.current_question:
+            print('=============| current_questions |=============')
+            print(self.current_question)
+            for key, value in self.current_question.items():
+                print(f'{key} --- {value}')
+            print('===============================================')
 
     def back(self):
         """
@@ -72,8 +88,10 @@ class UniTurnip:
         """
         if user_answer.startswith('UniTurnip'):
             self.button_response_processing(user_answer)
-        else:
+        elif 'string' in self.current_question['keyboard_settings']:
             self.string_response_processing(user_answer)
+        else:
+            self.back()
 
     def initialization(self, num):
         if not self.current_state_num:
@@ -92,7 +110,9 @@ class UniTurnip:
         if 'type' not in q_data.keys():  # additional question processing
             if curr_add_q_num == -1:  # if the stage num of the additional question is not specified
                 add_q_name, add_q_info = q_data[0]
-                self.current_state_num = [curr_main_q_num, 0, 0]
+                if len(self.current_state_num) == 2:
+                    self.current_state_num = [curr_main_q_num, 0, 0]
+                self.current_state_num = [curr_main_q_num, 0, self.current_state_num[2]]
                 self.current_question = add_q_info
                 self.current_state_name = [q_name, add_q_name]
                 return
@@ -130,11 +150,14 @@ class UniTurnip:
         elif button in ('UniTurnipMore', 'UniTurnipNotMore') and 'more' in self.current_question['keyboard_settings']:
             if 'NotMore' not in button:
                 self.current_state_num[1] = -1
-                self.current_repetition_num += 1
+                self.current_state_num[2] = +1
+                # self.current_repetition_num += 1
                 self.back()
         elif button in ('UniTurnipTrue', 'UniTurnipFalse') and 'boolean' in self.current_question['keyboard_settings']:
             answer = True if button == 'UniTurnipTrue' else False
             self.user_answers = self.user_answers_save(answer, self.user_answers)
+        else:
+            raise KeyError(button)
 
     def user_answers_save(self, answer, all_user_answers):
         answers_cope = dict(all_user_answers)
@@ -151,13 +174,13 @@ class UniTurnip:
 
     def save_answer(self, user_answers, key, answer):
         if type(user_answers) == list:
-            if self.current_repetition_num == 0:
+            if self.current_state_num[2] == 0:
                 user_answers[0][key] = answer
             else:
-                if self.current_repetition_num >= len(user_answers):
+                if self.current_state_num[2] >= len(user_answers):
                     user_answers += [{key: answer}]
                 else:
-                    user_answers[self.current_repetition_num][key] = answer
+                    user_answers[self.current_state_num[2]][key] = answer
         elif type(user_answers) == dict:
             user_answers[key] = answer
         return user_answers

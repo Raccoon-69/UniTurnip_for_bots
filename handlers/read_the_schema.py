@@ -1,4 +1,4 @@
-from UniTurnip_for_bots.handlers.inline_keyboards import get_keyboard
+from UniTurnip_for_bots.handlers.inline_keyboards import create_custom_keyboards, optional_keyboard
 
 
 class SchemaRead:
@@ -7,6 +7,7 @@ class SchemaRead:
         self.last_type = None
         self.required = []
         self.last_key = None
+        print(optional_keyboard)
 
     def schema_read(self, schema):
         if 'type' in schema.keys() and not self.last_type:
@@ -33,34 +34,40 @@ class SchemaRead:
         self.last_key = None
 
     def questions_creating(self, param_key, schema):
-        if 'type' in schema.keys() and 'title' in schema.keys():
-            question = {'type': schema['type'], 'question': schema['title']}
-        else:
-            return
-        if 'description' in schema.keys():
-            question['question'] += f'\n{schema["description"]}'
-        question['required'] = True if param_key in self.required else False
-        question['last_type'] = self.last_type
-        question['keyboard'], question['keyboard_settings'] = get_keyboard(question)
-        question['answer_settings'] = {}
-        if 'minLength' in schema.keys():
-            question['answer_settings']['minLength'] = schema['minLength']
-        if self.last_type == 'array':
-            if 'type' not in self.questions_list[-1][1]:
-                dict_with_questions = self.questions_list[-1][1]
-                key = max(dict_with_questions.keys())
-                dict_with_questions[key] = (param_key, question)
-                end_questions = {'question': 'Еще?', 'type': 'settings'}
-                end_questions['keyboard'], end_questions['keyboard_settings'] = get_keyboard(end_questions)
-                dict_with_questions[key+1] = ('End?', end_questions)
-                self.questions_list[-1] = (self.last_key, dict_with_questions)
+
+        def required_keys(param_key_, schema_):
+            if 'type' in schema_.keys() and 'title' in schema_.keys():
+                question = {'type': schema_['type'], 'question': schema_['title']}
             else:
-                end_questions = {'question': 'Еще?', 'type': 'settings'}
-                end_questions['keyboard'], end_questions['keyboard_settings'] = get_keyboard(end_questions)
-                dict_with_questions = {0: (param_key, question), 1: ('End?', end_questions)}
-                self.questions_list += [(self.last_key, dict_with_questions)]
-            return
-        self.questions_list += [(param_key, question)]
+                return False
+            if 'description' in schema_.keys():
+                question['question'] += f'\n{schema_["description"]}'
+            question['required'] = True if param_key_ in self.required else False
+            question['last_type'] = self.last_type
+            question['keyboard'], question['keyboard_settings'] = create_custom_keyboards(question)
+            print('==================')
+            print(question['keyboard'])
+            return question
+
+        if question := required_keys(param_key, schema):
+
+            question['answer_settings'] = {}
+            if 'minLength' in schema.keys():
+                question['answer_settings']['minLength'] = schema['minLength']
+
+            if self.last_type == 'array':
+                end_questions = required_keys('UniTurnipMore', {'title': 'Еще?', 'type': 'more_q'})
+                if 'type' not in self.questions_list[-1][1]:
+                    dict_with_questions = self.questions_list[-1][1]
+                    key = max(dict_with_questions.keys())
+                    dict_with_questions[key] = (param_key, question)
+                    dict_with_questions[key+1] = ('UniTurnipMore', end_questions)
+                    self.questions_list[-1] = (self.last_key, dict_with_questions)
+                else:
+                    dict_with_questions = {0: (param_key, question), 1: ('UniTurnip', end_questions)}
+                    self.questions_list += [(self.last_key, dict_with_questions)]
+                return
+            self.questions_list += [(param_key, question)]
 
     def response_stencil(self, schema):
         if type(schema) == dict:
