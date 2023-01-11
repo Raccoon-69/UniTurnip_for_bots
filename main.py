@@ -11,7 +11,6 @@ class UniTurnip:
 
         # current
         self.current_state_num = None
-        self.current_repetition_num = 0
         self.current_state_name = None
 
         # for bot use
@@ -60,6 +59,10 @@ class UniTurnip:
         self.initialization(+1)
 
         if self.current_question:
+            print('=============| settings |=============')
+            print(self.current_state_num)
+            print(self.current_state_name)
+            print(self.user_answers)
             print('=============| current_questions |=============')
             print(self.current_question)
             for key, value in self.current_question.items():
@@ -79,6 +82,7 @@ class UniTurnip:
         self.questions_list = None
         self.scheme_not_definite = True
         self.processing = False
+        self.user_answers = self.clear_answers(self.user_answers)
 
     def answer(self, user_answer):
         """
@@ -148,10 +152,11 @@ class UniTurnip:
         if button == 'UniTurnipCancel' and 'cancel' in self.current_question['keyboard_settings']:
             return
         elif button in ('UniTurnipMore', 'UniTurnipNotMore') and 'more' in self.current_question['keyboard_settings']:
+            print('yey')
             if 'NotMore' not in button:
+                print('mooore!!')
                 self.current_state_num[1] = -1
-                self.current_state_num[2] = +1
-                # self.current_repetition_num += 1
+                self.current_state_num[2] += +1
                 self.back()
         elif button in ('UniTurnipTrue', 'UniTurnipFalse') and 'boolean' in self.current_question['keyboard_settings']:
             answer = True if button == 'UniTurnipTrue' else False
@@ -184,3 +189,21 @@ class UniTurnip:
         elif type(user_answers) == dict:
             user_answers[key] = answer
         return user_answers
+
+    def clear_answers(self, answers):
+        print('clear_answers')
+        if type(answers) == dict:
+            print('dict')
+            answers_cope = dict(answers)
+            for key, value in answers_cope.items():
+                if value is None:
+                    answers.pop(key)
+                elif type(value) in (list, dict):
+                    self.clear_answers(value)
+            return answers
+        elif type(answers) == list:
+            print('list')
+            result_answers = []
+            for value in answers:
+                result_answers += self.clear_answers(value)
+            return result_answers
