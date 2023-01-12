@@ -191,9 +191,7 @@ class UniTurnip:
         return user_answers
 
     def clear_answers(self, answers):
-        print('clear_answers')
         if type(answers) == dict:
-            print('dict')
             answers_cope = dict(answers)
             for key, value in answers_cope.items():
                 if value is None:
@@ -202,7 +200,6 @@ class UniTurnip:
                     self.clear_answers(value)
             return answers
         elif type(answers) == list:
-            print('list')
             result_answers = []
             for value in answers:
                 result_answers += self.clear_answers(value)

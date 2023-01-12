@@ -1,12 +1,5 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-optional_keyboard = InlineKeyboardMarkup(
-    inline_keyboard=[
-        [
-            InlineKeyboardButton(text='Пропустить', callback_data='UniTurnipCancel')
-        ]
-    ]
-)
 
 def create_custom_keyboards(settings, other=None):
     if other:
@@ -15,10 +8,10 @@ def create_custom_keyboards(settings, other=None):
         keyboard_type = []
 
     if 'enum' in settings.keys():
-        buttons = []
+        buttons = [[]]
         for key in settings['enum']:
             buttons[0] += [InlineKeyboardButton(text=key, callback_data=f'UniTurnip_{key}')]
-        buttons += [InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')]
+        buttons += [[InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')]]
         keyboard_type += ['custom']
     else:
         if settings['type'] in ('string', 'integer', 'number'):
