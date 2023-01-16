@@ -3,10 +3,9 @@ from UniTurnip_for_bots.handlers.inline_keyboards import create_custom_keyboards
 
 class SchemaRead:
     def __init__(self, schema):
+        self.level = 0
         self.questions_list = []
-        self.last_type = None
-        self.required = []
-        self.last_key = None
+        self.questions_settings = {}
         self.schema = schema
         self.schema_read(schema)
         self.stencil = self.response_stencil(schema)
@@ -17,71 +16,100 @@ class SchemaRead:
     # ===================================================================================
     # ================================| read_the_schema |================================
     # ===================================================================================
-    def schema_read(self, schema):
-        if 'type' in schema.keys() and not self.last_type:
-            self.last_type = schema['type']
-        if 'required' in schema.keys():
-            self.required = schema['required']
+    def schema_read(self, schema, key_before_key=None, penultimate_type=None, last_type=None):
+        self.level += 1
+        self.q_settings_keys_check(schema, key_before_key)
         for key, value in schema.items():
             if type(value) == dict:
                 if 'type' in value.keys():
-                    if value['type'] == 'array':
-                        self.last_key = key
                     if value['type'] in ('string', 'boolean', 'number', 'integer'):
-                        self.questions_creating(key, value)
+                        self.questions_creating(key, value, key_before_key, penultimate_type, last_type)
                     else:
                         if 'type' in schema.keys():
-                            self.last_type = schema['type']
-                        self.schema_read(value)
+                            self.schema_read(value, key_before_key=key, penultimate_type=schema['type'], last_type=value['type'])
+                        else:
+                            self.schema_read(value, key_before_key=key, penultimate_type=penultimate_type, last_type=value['type'])
                 else:
-                    self.schema_read(value)
-            elif type(value) == list:
-                pass
-            elif type(value) == str:
-                pass
-        self.last_key = None
+                    self.schema_read(value, key_before_key=key, penultimate_type=penultimate_type, last_type=last_type)
+            if type(value) == list:
+                for val in value:
+                    if type(val) == dict and 'type' in val.keys() and val['type'] in ('string', 'boolean',
+                                                                                      'number', 'integer'):
+                        self.questions_creating(key, val, key_before_key, penultimate_type, last_type, from_list=True)
+        self.level -= 1
 
-    def questions_creating(self, param_key, schema):
+    def q_settings_keys_check(self, schema, last_key):
+        if self.level not in self.questions_settings.keys():
+            self.questions_settings[self.level] = {}
+        if 'required' in schema.keys():
+            self.questions_settings[self.level]['required'] = schema['required']
+        else:
+            self.questions_settings[self.level]['required'] = []
+        if 'type' in schema.keys():
+            self.questions_settings[self.level]['last_key'] = last_key
+            if 'title' in schema:
+                self.questions_settings[self.level]['title'] = schema['title']
+            if 'dependencies' in schema.keys():
+                self.questions_settings[self.level]['dependencies'] = schema['dependencies']
+            if 'uniqueItems' in schema.keys():
+                self.questions_settings[self.level]['uniqueItems'] = schema['uniqueItems']
+        max_key = max(self.questions_settings.keys())
+        if max_key > self.level:
+            self.questions_settings.pop(max_key)
 
-        def required_keys(param_key_, schema_):
-            if 'type' in schema_.keys() and 'title' in schema_.keys():
-                question = {'type': schema_['type'], 'question': schema_['title']}
-            else:
-                return False
-            if 'enum' in schema.keys():
-                question['enum'] = schema['enum']
-            question['required'] = True if param_key_ in self.required else False
-            question['last_type'] = self.last_type
-            question['keyboard'], question['keyboard_settings'] = create_custom_keyboards(question)
-            return question
+    def questions_creating(self, param_key, schema, key_before_key, penultimate_type, last_type, from_list=False):
 
-        if question := required_keys(param_key, schema):
+        if question := self.required_keys(schema, param_key, penultimate_type=penultimate_type, last_type=last_type):
 
-            question['answer_settings'] = {}
-            if 'minLength' in schema.keys():
-                question['answer_settings']['minLength'] = schema['minLength']
-            if 'minimum' in schema.keys():
-                question['answer_settings']['minimum'] = schema['minimum']
-            if 'maximum' in schema.keys():
-                question['answer_settings']['maximum'] = schema['maximum']
-            if 'multipleOf' in schema.keys():
-                question['answer_settings']['multipleOf'] = schema['multipleOf']
-            if 'description' in schema.keys():
-                question['question'] += f'\n{schema["description"]}'
-
-            if self.last_type == 'array':
-                end_questions = required_keys('UniTurnipMore', {'title': 'Еще?', 'type': 'more_q'})
-                if 'type' not in self.questions_list[-1][1]:
-                    dict_with_questions = self.questions_list[-1][1]
-                    key = max(dict_with_questions.keys())
-                    dict_with_questions[key] = (param_key, question)
-                    dict_with_questions[key+1] = ('UniTurnipMore', end_questions)
-                    self.questions_list[-1] = (self.last_key, dict_with_questions)
-                else:
-                    dict_with_questions = {0: (param_key, question), 1: ('UniTurnip', end_questions)}
-                    self.questions_list += [(self.last_key, dict_with_questions)]
+            if param_key == 'items' and key_before_key == 'items':
+                last_key = self.questions_settings[self.level-1]['last_key']
+                self.design_for_repeated_question(param_key, question, last_key)
                 return
+            elif penultimate_type == 'array' and param_key != 'items':
+                if self.questions_list and 'type' not in self.questions_list[-1][1]:
+                    self.design_for_repeated_question(param_key, question, key_before_key, add_to_last_list=True)
+                else:
+                    self.design_for_repeated_question(param_key, question, key_before_key)
+                return
+            elif last_type == 'array':
+                if 'enum' not in question.keys() and not from_list:
+                    self.design_for_repeated_question(param_key, question, key_before_key)
+                else:
+                    self.questions_list += [(key_before_key, question)]
+                return
+
             self.questions_list += [(param_key, question)]
+
+    def required_keys(self, schema, param_key, penultimate_type=None, last_type=None):
+        q_settings = self.questions_settings[self.level]
+        if 'type' not in schema:
+            raise KeyError(f'key "type" not in schema. Schema: {schema}')
+        question = schema
+        if 'title' in question.keys() or 'title' in q_settings.keys():
+            question['question'] = question['title'] if 'title' in question.keys() else q_settings['title']
+        else:
+            return False
+        if penultimate_type:
+            question['penultimate_type'] = penultimate_type
+        if last_type:
+            question['last_type'] = last_type
+        if 'uniqueItems' in q_settings.keys():
+            question['uniqueItems'] = q_settings['uniqueItems']
+        question['required'] = True if param_key in q_settings['required'] else False
+        question['keyboard'], question['keyboard_settings'] = create_custom_keyboards(question)
+        return question
+
+    def design_for_repeated_question(self, param_key, question, key_before_key, add_to_last_list=False):
+        more_question = self.required_keys({'title': 'Еще?', 'type': 'more_q'}, param_key)
+        if add_to_last_list:
+            last_q_list = self.questions_list[-1][1]
+            last_q_key = max(last_q_list.keys())
+            last_q_list[last_q_key] = (param_key, question)
+            last_q_list[last_q_key + 1] = ('UniTurnipMore', more_question)
+            self.questions_list[-1] = (key_before_key, last_q_list)
+        else:
+            dict_with_questions = {0: (param_key, question), 1: ('UniTurnipMore', more_question)}
+            self.questions_list += [(key_before_key, dict_with_questions)]
 
     # ======================================================================================
     # ================================| create the stencil |================================
@@ -148,142 +176,8 @@ class SchemaRead:
 
 
 if __name__ == '__main__':
-    schema = {
-  "definitions": {
-    "Thing": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "default": "Default name"
-        }
-      }
-    }
-  },
-  "type": "object",
-  "properties": {
-    "listOfStrings": {
-      "type": "array",
-      "title": "A list of strings",
-      "items": {
-        "type": "string",
-        "default": "bazinga"
-      }
-    },
-    "multipleChoicesList": {
-      "type": "array",
-      "title": "A multiple choices list",
-      "items": {
-        "type": "string",
-        "enum": [
-          "foo",
-          "bar",
-          "fuzz",
-          "qux"
-        ]
-      },
-      "uniqueItems": True
-    },
-    "fixedItemsList": {
-      "type": "array",
-      "title": "A list of fixed items",
-      "items": [
-        {
-          "title": "A string value",
-          "type": "string",
-          "default": "lorem ipsum"
-        },
-        {
-          "title": "a boolean value",
-          "type": "boolean"
-        }
-      ],
-      "additionalItems": {
-        "title": "Additional item",
-        "type": "number"
-      }
-    },
-    "minItemsList": {
-      "type": "array",
-      "title": "A list with a minimal number of items",
-      "minItems": 3,
-      "items": {
-        "$ref": "#/definitions/Thing"
-      }
-    },
-    "defaultsAndMinItems": {
-      "type": "array",
-      "title": "List and item level defaults",
-      "minItems": 5,
-      "default": [
-        "carp",
-        "trout",
-        "bream"
-      ],
-      "items": {
-        "type": "string",
-        "default": "unidentified"
-      }
-    },
-    "nestedList": {
-      "type": "array",
-      "title": "Nested list",
-      "items": {
-        "type": "array",
-        "title": "Inner list",
-        "items": {
-          "type": "string",
-          "default": "lorem ipsum"
-        }
-      }
-    },
-    "unorderable": {
-      "title": "Unorderable items",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "default": "lorem ipsum"
-      }
-    },
-    "unremovable": {
-      "title": "Unremovable items",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "default": "lorem ipsum"
-      }
-    },
-    "noToolbar": {
-      "title": "No add, remove and order buttons",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "default": "lorem ipsum"
-      }
-    },
-    "fixedNoToolbar": {
-      "title": "Fixed array without buttons",
-      "type": "array",
-      "items": [
-        {
-          "title": "A number",
-          "type": "number",
-          "default": 42
-        },
-        {
-          "title": "A boolean",
-          "type": "boolean",
-          "default": False
-        }
-      ],
-      "additionalItems": {
-        "title": "A string",
-        "type": "string",
-        "default": "lorem ipsum"
-      }
-    }
-  }
-}
+    from UniTurnip_for_bots.handlers.constants import *
+    schema = Arrays
 
     def print_result(result):
         if type(result) == dict:
@@ -312,3 +206,28 @@ if __name__ == '__main__':
 
     print('\nstencil:')
     print(stencil)
+
+test ={
+    "fixedItemsList": {
+      "type": "array",
+      "title": "A list of fixed items",
+      "items": [
+        {
+          "title": "A string value",
+          "type": "string",
+          "default": "lorem ipsum"
+        },
+        {
+          "title": "a boolean value",
+          "type": "boolean"
+        }
+      ],
+      "additionalItems": {
+        "title": "Additional item",
+        "type": "number"
+      }
+    },
+}
+
+
+

@@ -13,6 +13,7 @@ def create_custom_keyboards(settings, other=None):
             buttons[0] += [InlineKeyboardButton(text=key, callback_data=f'UniTurnip_{key}')]
         buttons += [[InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')]]
         keyboard_type += ['custom']
+        return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
     else:
         if settings['type'] in ('string', 'integer', 'number'):
             keyboard_type = [settings['type']]
