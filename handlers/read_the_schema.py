@@ -5,6 +5,7 @@ class SchemaRead:
     def __init__(self, schema):
         self.level = 0
         self.questions_list = []
+        self.required = []
         self.questions_settings = {}
         self.schema = schema
         self.schema_read(schema)
@@ -41,10 +42,11 @@ class SchemaRead:
     def q_settings_keys_check(self, schema, last_key):
         if self.level not in self.questions_settings.keys():
             self.questions_settings[self.level] = {}
+        elif self.questions_settings[self.level]['last_key'] != last_key:
+            self.questions_settings[self.level] = {}
+
         if 'required' in schema.keys():
-            self.questions_settings[self.level]['required'] = schema['required']
-        else:
-            self.questions_settings[self.level]['required'] = []
+            self.required = schema['required']
         if 'type' in schema.keys():
             self.questions_settings[self.level]['last_key'] = last_key
             if 'title' in schema:
@@ -53,23 +55,29 @@ class SchemaRead:
                 self.questions_settings[self.level]['dependencies'] = schema['dependencies']
             if 'uniqueItems' in schema.keys():
                 self.questions_settings[self.level]['uniqueItems'] = schema['uniqueItems']
+            if 'minItems' in schema.keys():
+                self.questions_settings[self.level]['minItems'] = schema['minItems']
         max_key = max(self.questions_settings.keys())
         if max_key > self.level:
             self.questions_settings.pop(max_key)
 
     def questions_creating(self, param_key, schema, key_before_key, penultimate_type, last_type, from_list=False):
 
-        if question := self.required_keys(schema, param_key, penultimate_type=penultimate_type, last_type=last_type):
+        if question := self.required_keys(schema, param_key,
+                                          penultimate_type=penultimate_type,
+                                          last_type=last_type,
+                                          from_list=from_list):
 
             if param_key == 'items' and key_before_key == 'items':
                 last_key = self.questions_settings[self.level-1]['last_key']
                 self.design_for_repeated_question(param_key, question, last_key)
                 return
             elif penultimate_type == 'array' and param_key != 'items':
+                start_question_key = self.questions_settings[self.level-2]['last_key']
                 if self.questions_list and 'type' not in self.questions_list[-1][1]:
-                    self.design_for_repeated_question(param_key, question, key_before_key, add_to_last_list=True)
+                    self.design_for_repeated_question(param_key, question, start_question_key, add_to_last_list=True)
                 else:
-                    self.design_for_repeated_question(param_key, question, key_before_key)
+                    self.design_for_repeated_question(param_key, question, start_question_key)
                 return
             elif last_type == 'array':
                 if 'enum' not in question.keys() and not from_list:
@@ -80,36 +88,60 @@ class SchemaRead:
 
             self.questions_list += [(param_key, question)]
 
-    def required_keys(self, schema, param_key, penultimate_type=None, last_type=None):
-        q_settings = self.questions_settings[self.level]
+    def required_keys(self, schema, param_key, penultimate_type=None, last_type=None, from_list=False):
         if 'type' not in schema:
             raise KeyError(f'key "type" not in schema. Schema: {schema}')
+        q_settings = self.questions_settings[self.level]
         question = schema
         if 'title' in question.keys() or 'title' in q_settings.keys():
             question['question'] = question['title'] if 'title' in question.keys() else q_settings['title']
         else:
             return False
+        if 'description' in question.keys():
+            question['question'] += f'\n{question["description"]}'
         if penultimate_type:
             question['penultimate_type'] = penultimate_type
         if last_type:
             question['last_type'] = last_type
         if 'uniqueItems' in q_settings.keys():
             question['uniqueItems'] = q_settings['uniqueItems']
-        question['required'] = True if param_key in q_settings['required'] else False
+        if 'minItems' in q_settings.keys():
+            question['minItems'] = q_settings['minItems']
+        if from_list:
+            question['required'] = True
+        else:
+            question['required'] = True if param_key in self.required else False
         question['keyboard'], question['keyboard_settings'] = create_custom_keyboards(question)
         return question
 
     def design_for_repeated_question(self, param_key, question, key_before_key, add_to_last_list=False):
         more_question = self.required_keys({'title': 'Еще?', 'type': 'more_q'}, param_key)
-        if add_to_last_list:
+        if add_to_last_list and self.questions_list[-1][0] == key_before_key:
             last_q_list = self.questions_list[-1][1]
             last_q_key = max(last_q_list.keys())
-            last_q_list[last_q_key] = (param_key, question)
-            last_q_list[last_q_key + 1] = ('UniTurnipMore', more_question)
+            if 'minItems' in question.keys():
+                last_q_list, end_key = self.multiply_the_number_of_the_question(last_q_list, param_key, question,
+                                                                                last_q_key, question['minItems'])
+                last_q_list[end_key] = ('UniTurnipMore', more_question)
+            else:
+                last_q_list[last_q_key] = (param_key, question)
+                last_q_list[last_q_key + 1] = ('UniTurnipMore', more_question)
             self.questions_list[-1] = (key_before_key, last_q_list)
         else:
-            dict_with_questions = {0: (param_key, question), 1: ('UniTurnipMore', more_question)}
+            if 'minItems' in question.keys():
+                dict_with_questions, end_key = self.multiply_the_number_of_the_question({}, param_key, question,
+                                                                                        0, question['minItems'])
+                dict_with_questions[end_key] = ('UniTurnipMore', more_question)
+            else:
+                dict_with_questions = {0: (param_key, question), 1: ('UniTurnipMore', more_question)}
             self.questions_list += [(key_before_key, dict_with_questions)]
+
+    def multiply_the_number_of_the_question(self, result_dict, param_key, question, start_key_num, multiply_num):
+        end = start_key_num + multiply_num
+        q = (param_key, question)
+        for i in range(start_key_num, end):
+            result_dict[i] = q
+        return result_dict, end
 
     # ======================================================================================
     # ================================| create the stencil |================================

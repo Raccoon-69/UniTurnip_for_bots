@@ -27,10 +27,8 @@ class UniTurnip:
         :return: Данная функция нечего не возвращает, но с ее помощью в памяти сохраняются настройки для создания опроса
         '''
         schema = read_schema(schema)
-        Schema = SchemaRead()
-        Schema.schema_read(schema)
-        self.questions_list = Schema.questions_list
-        self.user_answers = Schema.response_stencil(schema)
+        Schema = SchemaRead(schema)
+        self.questions_list, self.user_answers = Schema.get()
         self.scheme_not_definite = False
         print('===========| question_list |===========')
         for value in self.questions_list:
@@ -40,6 +38,8 @@ class UniTurnip:
                     print(f'{key} --- {value}')
             else:
                 print(value)
+        print('============| user_answers |===========')
+        print(self.user_answers)
         print('=======================================')
 
     def start_survey(self):
@@ -82,7 +82,7 @@ class UniTurnip:
         self.questions_list = None
         self.scheme_not_definite = True
         self.processing = False
-        self.user_answers = self.clear_answers(self.user_answers)
+        # self.user_answers = self.clear_answers(self.user_answers)
 
     def answer(self, user_answer):
         """
@@ -97,48 +97,80 @@ class UniTurnip:
         else:
             self.back()
 
-    def initialization(self, num):
-        if not self.current_state_num:
+    def initialization(self, num, work_with_add_q=False):
+        # =======|  determination of the current state number |=======
+        if work_with_add_q:
+            if num == 0:
+                self.current_state_num[0] -= 1
+                self.current_state_num[1] = -1
+                self.current_state_num[2] += 1
+            elif num == -1:
+                if -1 < self.current_state_num[0] < len(self.questions_list):
+                    self.current_state_num = [self.current_state_num[0], -1]
+                else:
+                    return self.end_survey()
+            return
+        elif not self.current_state_num:
             self.current_state_num = [num, -1]  # [main question, additional questions]
         elif self.current_state_num[1] != -1 or -1 < self.current_state_num[0]+1 < len(self.questions_list) or num < 0:
             if self.current_state_num[1] == -1:
-                self.current_state_num[0] = self.current_state_num[0] + num
+                self.current_state_num[0] += num
             else:
-                self.current_state_num[1] = self.current_state_num[1] + num
+                self.current_state_num[1] += num
         else:
             return self.end_survey()
+        # ============================================================
 
+        # ===============| cut of variable names |===============
         curr_main_q_num, curr_add_q_num = self.current_state_num[:2]
         q_name, q_data = self.questions_list[curr_main_q_num]
+        # =======================================================
 
+        # =====================| functions |=====================
+        def set_new_main_question():
+            add_q_name, add_q_info = q_data[0]
+            if len(self.current_state_num) == 2:
+                self.current_state_num = [curr_main_q_num, 0, 0]
+            self.current_state_num = [curr_main_q_num, 0, self.current_state_num[2]]
+            self.current_question = add_q_info
+            self.current_state_name = [q_name, add_q_name]
+
+        def set_first_additional_question():
+            add_q_name, add_q_info = q_data[curr_add_q_num]
+            self.current_question = add_q_info
+            self.current_state_name = [q_name, add_q_name]
+
+        def next_main_question():
+            if curr_add_q_num == -1 and -1 < curr_main_q_num < len(self.questions_list):
+                self.current_state_name = q_name
+                self.current_question = q_data
+            else:
+                self.end_survey()
+        # =======================================================
+
+        # ========| set new current question (main or add) |========
         if 'type' not in q_data.keys():  # additional question processing
             if curr_add_q_num == -1:  # if the stage num of the additional question is not specified
-                add_q_name, add_q_info = q_data[0]
-                if len(self.current_state_num) == 2:
-                    self.current_state_num = [curr_main_q_num, 0, 0]
-                self.current_state_num = [curr_main_q_num, 0, self.current_state_num[2]]
-                self.current_question = add_q_info
-                self.current_state_name = [q_name, add_q_name]
-                return
+                set_new_main_question()
             elif self.current_state_num[1] != -1:
                 if -1 < curr_add_q_num <= max(q_data.keys()):  # if additional questions
-                    add_q_name, add_q_info = q_data[curr_add_q_num]
-                    self.current_question = add_q_info
-                    self.current_state_name = [q_name, add_q_name]
-                    return
+                    set_first_additional_question()
                 else:  # if additional questions are over
-                    self.current_state_num = [curr_main_q_num + 1, -1]
-
-        if curr_add_q_num == -1 and -1 < curr_main_q_num < len(self.questions_list):
-            self.current_state_name = q_name
-            self.current_question = q_data
+                    if self.current_state_num[0] == 0:  # if current add questions is first main questions
+                        self.current_state_num = [curr_main_q_num, -1]
+                        set_new_main_question()
+                    else:
+                        # set next add question
+                        self.current_state_num = [curr_main_q_num, -1]
+                        next_main_question()
         else:
-            self.end_survey()
+            next_main_question()
+        # ==========================================================
 
     def string_response_processing(self, answer):
         if self.current_question['type'] == 'string':
-            if 'minLength' in self.current_question['answer_settings']:
-                min_len = int(self.current_question['answer_settings']['minLength'])
+            if 'minLength' in self.current_question.keys():
+                min_len = int(self.current_question['minLength'])
                 if len(answer) < min_len:
                     self.back()
                 else:
@@ -152,14 +184,15 @@ class UniTurnip:
         if button == 'UniTurnipCancel' and 'cancel' in self.current_question['keyboard_settings']:
             return
         elif button in ('UniTurnipMore', 'UniTurnipNotMore') and 'more' in self.current_question['keyboard_settings']:
-            print('yey')
-            if 'NotMore' not in button:
-                print('mooore!!')
-                self.current_state_num[1] = -1
-                self.current_state_num[2] += +1
-                self.back()
+            if button == 'UniTurnipNotMore':
+                self.initialization(-1, work_with_add_q=True)
+            else:
+                self.initialization(0, work_with_add_q=True)
         elif button in ('UniTurnipTrue', 'UniTurnipFalse') and 'boolean' in self.current_question['keyboard_settings']:
             answer = True if button == 'UniTurnipTrue' else False
+            self.user_answers = self.user_answers_save(answer, self.user_answers)
+        elif 'custom' in self.current_question['keyboard_settings']:
+            answer = button.strip('UniTurnip_')
             self.user_answers = self.user_answers_save(answer, self.user_answers)
         else:
             raise KeyError(button)
@@ -179,8 +212,12 @@ class UniTurnip:
 
     def save_answer(self, user_answers, key, answer):
         if type(user_answers) == list:
-            if self.current_state_num[2] == 0:
+            if len(user_answers) == 0 or type(user_answers[0]) != dict:
+                user_answers += [answer]
+            elif self.current_state_num[2] == 0 and len(user_answers) != 0:
                 user_answers[0][key] = answer
+            elif len(user_answers) == 0:
+                user_answers = [{key: answer}]
             else:
                 if self.current_state_num[2] >= len(user_answers):
                     user_answers += [{key: answer}]
@@ -190,17 +227,17 @@ class UniTurnip:
             user_answers[key] = answer
         return user_answers
 
-    def clear_answers(self, answers):
-        if type(answers) == dict:
-            answers_cope = dict(answers)
-            for key, value in answers_cope.items():
-                if value is None:
-                    answers.pop(key)
-                elif type(value) in (list, dict):
-                    self.clear_answers(value)
-            return answers
-        elif type(answers) == list:
-            result_answers = []
-            for value in answers:
-                result_answers += self.clear_answers(value)
-            return result_answers
+    # def clear_answers(self, answers):
+    #     if type(answers) == dict:
+    #         answers_cope = dict(answers)
+    #         for key, value in answers_cope.items():
+    #             if value is None:
+    #                 answers.pop(key)
+    #             elif type(value) in (list, dict):
+    #                 self.clear_answers(value)
+    #         return answers
+    #     elif type(answers) == list:
+    #         result_answers = []
+    #         for value in answers:
+    #             result_answers += self.clear_answers(value)
+    #         return result_answers

@@ -202,28 +202,67 @@ Arrays = {
     }
 }
 
-DEFAULT_SCHEME = Nested
-
-test = {
-    "fixedNoToolbar": {
-        "title": "Fixed array without buttons",
-        "type": "array",
-        "items": [
-            {
-                "title": "A number",
-                "type": "number",
-                "default": 42
-            },
-            {
-                "title": "A boolean",
-                "type": "boolean",
-                "default": False
+Custom = {
+    "title": "A list of tasks",
+    "type": "object",
+    "required": [
+        "title"
+    ],
+    "properties": {
+        "defaultsAndMinItems": {
+            "type": "array",
+            "title": "List and item level defaults",
+            "minItems": 2,
+            "items": {
+                "type": "string",
+                "default": "unidentified"
             }
-        ],
-        "additionalItems": {
-            "title": "A string",
-            "type": "string",
-            "default": "lorem ipsum"
+        },
+        "tasks": {
+            "type": "array",
+            "title": "Tasks",
+            "items": {
+                "type": "object",
+                "required": [
+                    "title"
+                ],
+                "properties": {
+                    "title": {
+                        "type": "string",
+                        "title": "Title",
+                        "description": "A sample title"
+                    },
+                    "details": {
+                        "type": "string",
+                        "title": "Task details",
+                        "description": "Enter the task details"
+                    },
+                    "done": {
+                        "type": "boolean",
+                        "title": "Done?"
+                    }
+                }
+            }
+        },
+        "fixedItemsList": {
+            "type": "array",
+            "title": "A list of fixed items",
+            "items": [
+                {
+                    "title": "A string value",
+                    "type": "string",
+                },
+                {
+                    "title": "a boolean value",
+                    "type": "boolean"
+                }
+            ],
+            "additionalItems": {
+                "title": "Additional item",
+                "type": "number"
+            }
         }
     }
 }
+
+DEFAULT_SCHEME = Custom

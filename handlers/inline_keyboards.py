@@ -11,7 +11,8 @@ def create_custom_keyboards(settings, other=None):
         buttons = [[]]
         for key in settings['enum']:
             buttons[0] += [InlineKeyboardButton(text=key, callback_data=f'UniTurnip_{key}')]
-        buttons += [[InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')]]
+        # if
+        #     buttons += [[InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')]]
         keyboard_type += ['custom']
         return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
     else:
