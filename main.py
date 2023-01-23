@@ -88,6 +88,7 @@ class UniTurnip:
         """
         Вернутся к прошлому вопросу
         """
+        print('back ---------------')
         self.initialization(-1)
 
     def end_survey(self):
@@ -107,7 +108,8 @@ class UniTurnip:
         """
         if user_answer.startswith('UniTurnip'):
             self.button_response_processing(user_answer)
-        elif 'string' in self.current_question['keyboard_settings']:
+        elif 'string' in self.current_question['keyboard_settings']\
+                or 'number' in self.current_question['keyboard_settings']:
             self.string_response_processing(user_answer)
         else:
             self.back()
@@ -241,17 +243,13 @@ class UniTurnip:
                 if len(answer) < min_len:
                     self.back()
                 else:
-                    self.user_answers = self.user_answers_save(answer, self.user_answers)
-                    if self.check_additional_param():
-                        self.next()
+                    self.save_and_next(answer)
             else:
-                self.user_answers = self.user_answers_save(answer, self.user_answers)
-                if self.check_additional_param():
-                    self.next()
+                self.save_and_next(answer)
         elif self.current_question['type'] == 'array':
-            self.user_answers = self.user_answers_save(answer, self.user_answers)
-            if self.check_additional_param():
-                self.next()
+            self.save_and_next(answer)
+        elif self.current_question['type'] == 'number':
+            self.save_and_next(answer)
 
     def button_response_processing(self, button):
         if button == 'UniTurnipCancel' and 'cancel' in self.current_question['keyboard_settings']:
@@ -263,14 +261,15 @@ class UniTurnip:
                 self.initialization(0, work_with_add_q=True)
         elif button in ('UniTurnipTrue', 'UniTurnipFalse') and 'boolean' in self.current_question['keyboard_settings']:
             answer = True if button == 'UniTurnipTrue' else False
-            self.user_answers = self.user_answers_save(answer, self.user_answers)
-            if self.check_additional_param():
-                self.next()
+            self.save_and_next(answer)
         elif 'custom' in self.current_question['keyboard_settings']:
             answer = button.strip('UniTurnip_')
-            self.user_answers = self.user_answers_save(answer, self.user_answers)
-            if self.check_additional_param():
-                self.next()
+            self.save_and_next(answer)
+
+    def save_and_next(self, answer):
+        self.user_answers = self.user_answers_save(answer, self.user_answers)
+        if self.check_additional_param():
+            self.next()
 
     def check_additional_param(self):
         if 'minItems' in self.current_question.keys():
@@ -285,8 +284,12 @@ class UniTurnip:
         for key in answers_cope.keys():
             if type(self.current_state_name) == str:
                 if key == self.current_state_name:
-                    all_user_answers = self.save_answer(all_user_answers, key, answer)
-                    return all_user_answers
+                    if type(all_user_answers) is None:
+                        all_user_answers = self.save_answer(all_user_answers, key, answer)
+                        return all_user_answers
+                    elif type(all_user_answers[key]) == list:
+                        all_user_answers[key] = self.save_answer(all_user_answers[key], key, answer)
+                        return all_user_answers
             else:
                 if key == self.current_state_name[0]:
                     all_user_answers[key] = self.save_answer(all_user_answers[key], self.current_state_name[1], answer)

@@ -82,6 +82,8 @@ class SchemaRead:
             elif last_type == 'array':
                 if 'enum' not in question.keys() and not from_list:
                     self.design_for_repeated_question(param_key, question, key_before_key)
+                elif 'enum' in question.keys() and not from_list:
+                    self.design_for_repeated_question(param_key, question, key_before_key)
                 else:
                     self.questions_list += [(key_before_key, question)]
                 return
