@@ -19,13 +19,6 @@ def create_custom_keyboards(settings, other=None):
         if settings['type'] in ('string', 'integer', 'number'):
             keyboard_type = [settings['type']]
             return assembly_and_required_button(settings, [], keyboard_type, assembly=False)
-        elif settings['type'] == 'more_q':
-            buttons = [[
-                InlineKeyboardButton(text='More', callback_data='UniTurnipMore'),
-                InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')
-            ]]
-            keyboard_type += ['more']
-            return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
         elif settings['type'] == 'boolean':
             buttons = [[
                 InlineKeyboardButton(text='Yes', callback_data='UniTurnipTrue'),
@@ -38,11 +31,22 @@ def create_custom_keyboards(settings, other=None):
 
 
 def assembly_and_required_button(settings, buttons, keyboard_type, assembly=True):
-    if not settings['required']:
-        buttons += [[InlineKeyboardButton(text='Cancel', callback_data='UniTurnipCancel')]]
+    if not settings['required'] and 'minItems' not in settings.keys():
+        buttons += [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
         keyboard_type += ['cancel']
         return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
     if assembly:
         return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
     return None, keyboard_type
+
+
+def keyboard_for_more_q():
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(text='More', callback_data='UniTurnipMore'),
+                InlineKeyboardButton(text='Accept', callback_data='UniTurnipNotMore')
+            ]
+        ])
+    return keyboard, ['more']
 

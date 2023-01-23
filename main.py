@@ -1,6 +1,9 @@
+import sys
+
 from UniTurnip_for_bots.handlers.read_the_schema import SchemaRead
 from UniTurnip_for_bots.handlers.tools import read_schema
 from UniTurnip_for_bots.handlers.constants import DEFAULT_SCHEME
+from UniTurnip_for_bots.handlers.inline_keyboards import keyboard_for_more_q
 
 
 class UniTurnip:
@@ -15,6 +18,7 @@ class UniTurnip:
 
         # for bot use
         self.processing = False
+        self.freeze = False
         self.current_question = None
 
         # stores user responses
@@ -51,6 +55,16 @@ class UniTurnip:
             self.read_json(DEFAULT_SCHEME)
         self.processing = True
         self.initialization(0)
+        print()
+        print('=============| settings |=============')
+        print(self.current_state_num)
+        print(self.current_state_name)
+        print(self.user_answers)
+        print('=============| current_questions |=============')
+        print(self.current_question)
+        for key, value in self.current_question.items():
+            print(f'{key} --- {value}')
+        print('===============================================')
 
     def next(self):
         """
@@ -59,6 +73,7 @@ class UniTurnip:
         self.initialization(+1)
 
         if self.current_question:
+            print()
             print('=============| settings |=============')
             print(self.current_state_num)
             print(self.current_state_name)
@@ -97,75 +112,127 @@ class UniTurnip:
         else:
             self.back()
 
-    def initialization(self, num, work_with_add_q=False):
-        # =======|  determination of the current state number |=======
-        if work_with_add_q:
-            if num == 0:
-                self.current_state_num[0] -= 1
-                self.current_state_num[1] = -1
-                self.current_state_num[2] += 1
-            elif num == -1:
-                if -1 < self.current_state_num[0] < len(self.questions_list):
-                    self.current_state_num = [self.current_state_num[0], -1]
-                else:
-                    return self.end_survey()
-            return
-        elif not self.current_state_num:
-            self.current_state_num = [num, -1]  # [main question, additional questions]
-        elif self.current_state_num[1] != -1 or -1 < self.current_state_num[0]+1 < len(self.questions_list) or num < 0:
-            if self.current_state_num[1] == -1:
-                self.current_state_num[0] += num
-            else:
-                self.current_state_num[1] += num
-        else:
-            return self.end_survey()
-        # ============================================================
-
-        # ===============| cut of variable names |===============
-        curr_main_q_num, curr_add_q_num = self.current_state_num[:2]
-        q_name, q_data = self.questions_list[curr_main_q_num]
-        # =======================================================
+    def initialization(self, num, work_with_add_q=False, ask__giv_more_q=False):
+        print(f'\n\ninitialization(num={num}, work_with_add_q={work_with_add_q}, ask__give_more_q={ask__giv_more_q})\n'
+              f'self.current_state_num={self.current_state_num}')
 
         # =====================| functions |=====================
-        def set_new_main_question():
-            add_q_name, add_q_info = q_data[0]
-            if len(self.current_state_num) == 2:
-                self.current_state_num = [curr_main_q_num, 0, 0]
-            self.current_state_num = [curr_main_q_num, 0, self.current_state_num[2]]
-            self.current_question = add_q_info
-            self.current_state_name = [q_name, add_q_name]
+        def ask__you_need_to_give_the_last_question_again():
+            print('\nask__you_need_to_give_the_last_question_again()', end='')
+            self.current_state_name = 'more_q'
+            keyboard_and_settings = keyboard_for_more_q()
+            self.current_question = {'question': 'You need to give the last question again?', 'type': 'more_q',
+                                     'keyboard': keyboard_and_settings[0],
+                                     'keyboard_settings': keyboard_and_settings[1]}
+            self.current_state_num[1] += 1
 
-        def set_first_additional_question():
-            add_q_name, add_q_info = q_data[curr_add_q_num]
-            self.current_question = add_q_info
-            self.current_state_name = [q_name, add_q_name]
+        def current_main_q_in_list():
+            curr_main_q_num = self.current_state_num[0]  # main question
+            return -1 < curr_main_q_num < len(self.questions_list)
 
-        def next_main_question():
-            if curr_add_q_num == -1 and -1 < curr_main_q_num < len(self.questions_list):
-                self.current_state_name = q_name
-                self.current_question = q_data
+        def current_add_q_in_list():
+            curr_main_q_num, curr_add_q_num = self.current_state_num[:2]  # additional question
+            curr_q_data = self.questions_list[curr_main_q_num][1]
+            if 'type' not in curr_q_data.keys():
+                if -1 <= curr_add_q_num < max(curr_q_data.keys())+1:
+                    return True
+                elif curr_add_q_num == max(curr_q_data.keys())+1:
+                    return 'more_q'
+            return False
+
+        def main_question_proces(next=True):
+            print(f'\nmain_question_proces(next={next})', end='')
+            if next:
+                print('/next', end='')
+                self.current_state_num[0] += 1
+            if current_main_q_in_list():
+                print('/current_main_q_in_list', end='')
+                if current_add_q_in_list():
+                    print('/current_add_q_in_list', end='')
+                    additional_question_proces(first=True)
+                else:
+                    print('/add q not in list', end='')
+                    set_main_q()
             else:
+                print('/end_survey', end='')
                 self.end_survey()
+
+        def additional_question_proces(first=False, exit=False, next=True):
+            print(f'\nadditional_question_proces(first={first}, exit={exit}, next={next})', end='')
+            if first:
+                print('/first', end='')
+                self.current_state_num = [self.current_state_num[0], 0, self.current_state_num[2]+1]
+                set_add_q()
+            elif exit:
+                print('/exit', end='')
+                self.current_state_num = [self.current_state_num[0]+1, -1, -1]
+                if current_main_q_in_list():
+                    print('/current_main_q_in_list', end='')
+                    main_question_proces(next=False)
+                else:
+                    print('/end_survey', end='')
+                    self.end_survey()
+            else:
+                print('/without param', end='')
+                if next:
+                    print('/next', end='')
+                    print(f'({self.current_state_num})', end='')
+                    self.current_state_num[1] += 1
+                if current_main_q_in_list():
+                    print('/current_main_q_in_list', end='')
+                    if info := current_add_q_in_list():
+                        print('/current_add_q_in_list', end='')
+                        if info is True:
+                            print('/info is True', end='')
+                            set_add_q()
+                        elif info == 'more_q':
+                            print('/info == more_q', end='')
+                            ask__you_need_to_give_the_last_question_again()
+                    else:
+                        print('/if not add q', end='')
+                        main_question_proces()
+                else:
+                    print('end_survey', end='')
+                    self.end_survey()
+
+        def set_add_q():
+            curr_main_q_num, curr_add_q_num = self.current_state_num[:2]
+            q_name, q_data = self.questions_list[curr_main_q_num]
+            add_q_name, add_q_info = q_data[curr_add_q_num]
+            self.current_state_name = [q_name, add_q_name]
+            self.current_question = add_q_info
+
+        def set_main_q():
+            curr_main_q_num = self.current_state_num[0]
+            q_name, q_data = self.questions_list[curr_main_q_num]
+            self.current_state_name = q_name
+            self.current_question = q_data
         # =======================================================
 
-        # ========| set new current question (main or add) |========
-        if 'type' not in q_data.keys():  # additional question processing
-            if curr_add_q_num == -1:  # if the stage num of the additional question is not specified
-                set_new_main_question()
-            elif self.current_state_num[1] != -1:
-                if -1 < curr_add_q_num <= max(q_data.keys()):  # if additional questions
-                    set_first_additional_question()
-                else:  # if additional questions are over
-                    if self.current_state_num[0] == 0:  # if current add questions is first main questions
-                        self.current_state_num = [curr_main_q_num, -1]
-                        set_new_main_question()
-                    else:
-                        # set next add question
-                        self.current_state_num = [curr_main_q_num, -1]
-                        next_main_question()
+        # =======|  determination of the current state number |=======
+        if self.freeze:
+            self.freeze = False
+            return
+        elif self.current_state_num is None:
+            self.current_state_num = [0, -1, -1]
+            main_question_proces(next=False)
+        elif ask__giv_more_q:
+            ask__you_need_to_give_the_last_question_again()
         else:
-            next_main_question()
-        # ==========================================================
+            if not work_with_add_q and self.current_state_num[1] == -1:  # if current question is main
+                print('main')
+                main_question_proces()
+            elif self.current_state_num[1] != -1 or work_with_add_q:  # if current question is additional
+                if num == 0:  # if more
+                    additional_question_proces(first=True)
+                elif num == -1:  # if accept
+                    additional_question_proces(exit=True)
+                else:
+                    additional_question_proces()
+            else:
+                print('error!')
+        print('\n((((((end))))))')
+        # ============================================================
 
     def string_response_processing(self, answer):
         if self.current_question['type'] == 'string':
@@ -175,14 +242,20 @@ class UniTurnip:
                     self.back()
                 else:
                     self.user_answers = self.user_answers_save(answer, self.user_answers)
+                    if self.check_additional_param():
+                        self.next()
             else:
                 self.user_answers = self.user_answers_save(answer, self.user_answers)
+                if self.check_additional_param():
+                    self.next()
         elif self.current_question['type'] == 'array':
             self.user_answers = self.user_answers_save(answer, self.user_answers)
+            if self.check_additional_param():
+                self.next()
 
     def button_response_processing(self, button):
         if button == 'UniTurnipCancel' and 'cancel' in self.current_question['keyboard_settings']:
-            return
+            self.next()
         elif button in ('UniTurnipMore', 'UniTurnipNotMore') and 'more' in self.current_question['keyboard_settings']:
             if button == 'UniTurnipNotMore':
                 self.initialization(-1, work_with_add_q=True)
@@ -191,11 +264,21 @@ class UniTurnip:
         elif button in ('UniTurnipTrue', 'UniTurnipFalse') and 'boolean' in self.current_question['keyboard_settings']:
             answer = True if button == 'UniTurnipTrue' else False
             self.user_answers = self.user_answers_save(answer, self.user_answers)
+            if self.check_additional_param():
+                self.next()
         elif 'custom' in self.current_question['keyboard_settings']:
             answer = button.strip('UniTurnip_')
             self.user_answers = self.user_answers_save(answer, self.user_answers)
-        else:
-            raise KeyError(button)
+            if self.check_additional_param():
+                self.next()
+
+    def check_additional_param(self):
+        if 'minItems' in self.current_question.keys():
+            if self.current_question['minItems'] >= self.current_state_num[2] + 2:
+                return self.initialization(0, work_with_add_q=True)
+            else:
+                return self.initialization(0, ask__giv_more_q=True)
+        return True
 
     def user_answers_save(self, answer, all_user_answers):
         answers_cope = dict(all_user_answers)
@@ -226,18 +309,3 @@ class UniTurnip:
         elif type(user_answers) == dict:
             user_answers[key] = answer
         return user_answers
-
-    # def clear_answers(self, answers):
-    #     if type(answers) == dict:
-    #         answers_cope = dict(answers)
-    #         for key, value in answers_cope.items():
-    #             if value is None:
-    #                 answers.pop(key)
-    #             elif type(value) in (list, dict):
-    #                 self.clear_answers(value)
-    #         return answers
-    #     elif type(answers) == list:
-    #         result_answers = []
-    #         for value in answers:
-    #             result_answers += self.clear_answers(value)
-    #         return result_answers

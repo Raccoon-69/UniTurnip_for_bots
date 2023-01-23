@@ -115,33 +115,14 @@ class SchemaRead:
         return question
 
     def design_for_repeated_question(self, param_key, question, key_before_key, add_to_last_list=False):
-        more_question = self.required_keys({'title': 'Еще?', 'type': 'more_q'}, param_key)
         if add_to_last_list and self.questions_list[-1][0] == key_before_key:
             last_q_list = self.questions_list[-1][1]
             last_q_key = max(last_q_list.keys())
-            if 'minItems' in question.keys():
-                last_q_list, end_key = self.multiply_the_number_of_the_question(last_q_list, param_key, question,
-                                                                                last_q_key, question['minItems'])
-                last_q_list[end_key] = ('UniTurnipMore', more_question)
-            else:
-                last_q_list[last_q_key] = (param_key, question)
-                last_q_list[last_q_key + 1] = ('UniTurnipMore', more_question)
+            last_q_list[last_q_key+1] = (param_key, question)
             self.questions_list[-1] = (key_before_key, last_q_list)
         else:
-            if 'minItems' in question.keys():
-                dict_with_questions, end_key = self.multiply_the_number_of_the_question({}, param_key, question,
-                                                                                        0, question['minItems'])
-                dict_with_questions[end_key] = ('UniTurnipMore', more_question)
-            else:
-                dict_with_questions = {0: (param_key, question), 1: ('UniTurnipMore', more_question)}
+            dict_with_questions = {0: (param_key, question)}
             self.questions_list += [(key_before_key, dict_with_questions)]
-
-    def multiply_the_number_of_the_question(self, result_dict, param_key, question, start_key_num, multiply_num):
-        end = start_key_num + multiply_num
-        q = (param_key, question)
-        for i in range(start_key_num, end):
-            result_dict[i] = q
-        return result_dict, end
 
     # ======================================================================================
     # ================================| create the stencil |================================

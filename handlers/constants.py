@@ -218,7 +218,7 @@ Custom = {
                 "default": "unidentified"
             }
         },
-        "tasks": {
+        "task": {
             "type": "array",
             "title": "Tasks",
             "items": {
@@ -250,7 +250,7 @@ Custom = {
             "items": [
                 {
                     "title": "A string value",
-                    "type": "string",
+                    "type": "string"
                 },
                 {
                     "title": "a boolean value",
@@ -260,6 +260,19 @@ Custom = {
             "additionalItems": {
                 "title": "Additional item",
                 "type": "number"
+            }
+        },
+        "multipleChoicesList": {
+            "type": "array",
+            "title": "A multiple choices list",
+            "items": {
+                "type": "string",
+                "enum": [
+                    "foo",
+                    "bar",
+                    "fuzz",
+                    "qux"
+                ]
             }
         }
     }
