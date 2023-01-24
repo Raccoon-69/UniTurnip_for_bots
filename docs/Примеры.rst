@@ -4,20 +4,62 @@
 Здесь описаны способы интеграции данной библиотеки в бота
 
 
+Пример начала опроса
+^^^^^^^^^^^^^^^^^^^^
+
+Для того чтобы начать опрос, надо вызвать функцию "start_survey()", после чего начнется опрос::
+
+	@dp.message_handler(commands=['interview'])
+	async def first_question(message: types.Message):
+	    await Interview.interview.set()  # Задается состояние опроса
+	    UniTurnip.start_survey()  # Начало опроса
+	    question = UniTurnip.current_question['question']  # Получение вопроса
+	    keyboard = UniTurnip.current_question['keyboard']  # Получение клавиатуры (если есть, в ином случае None)
+	    await message.answer(question, reply_markup=keyboard)  # Отправка сообщения пользователю
+
+Сперва вы задаете состояние, чтобы ответ от пользователя попадал в определенные обработчики, затем уже с помощью нашей библиотеки начинаете опрос, сразу после чего создаются все необходимые вопросы и поподают в переменную "current_question" по очереди.
+
+
 Пример обработки текстового сообщения
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Вот стандартный пример использования::
+Это пример для обработки с помощью "message_handler" из aiogram который будет отрабатывать каждый раз, когда ответом на вопрос будет текстовое сообщение::
 
 	@dp.message_handler(state=Interview.interview)
 	async def second_questions(message: types.Message, state: FSMContext):
-	    UniTurnip.answer(message.text)
-	    UniTurnip.next()
-	    if UniTurnip.processing:
-	        await message.answer(Turnip.current_question, reply_markup=UniTurnip.current_keyboard)
+	    UniTurnip.answer(message.text)  # Ответ пользователя передается в UniTurnip, для обработки
+	    if UniTurnip.processing:  # Проверка, состояния опроса
+	        question = UniTurnip.current_question['question']  # Получение вопроса
+	        keyboard = UniTurnip.current_question['keyboard']  # Получение клавиатуры (если есть, в ином случае None)
+	        await message.answer(question, reply_markup=keyboard)  # Отправка сообщения пользователю
 	    else:
 	        await message.answer('Poll completed!')
-	        await state.reset_state()
+	        await state.reset_state()  # Выход из состояния опроса
 
-Это стандарнтый message_handler из aiogram который будет отрабатывать каждый раз, когда ответом на вопрос должно быть текстовое сообщение
-И не смотря на сложность и длинную опроса, если ответом будет текст, то данная функция будет вызываться, сохранять ответ и задавать следующий вопрос, с прикрепленной к нему клавиатурой (если требуется)
+Сперва ответ пользователя передается в библиотеку, для обработки. Если ответ не удовлетворяет требованиям (слишком короткий, не тот тип данных и тд.), то вопрос повторяется снова, если это был последный вопрос, то переменная "processing" становился False, для выхода из опроса. В ином случае, в переменную "current_question" попадают данные следующего вопроса
+
+
+Пример обработки callback query
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Это пример для обработки через "callback_query_handler" из aiogram, который будет отрабатывать каждый раз, когда ответом на вопрос будет callback query (нажатие на inline button)::
+
+	@dp.callback_query_handler(Text(startswith='UniTurnip'), state=Interview.interview)
+	async def film_genre_selection_func(call: CallbackQuery, state: FSMContext):
+	    await call.message.edit_reply_markup()
+	    UniTurnip.answer(call.data)
+	    if UniTurnip.processing:
+	        question = UniTurnip.current_question['question']  # Получение вопроса
+	        keyboard = UniTurnip.current_question['keyboard']  # Получение клавиатуры (если есть, в ином случае None)
+	        await call.message.answer(question, reply_markup=keyboard)  # Отправка сообщения пользователю
+	    else:
+	        await call.message.answer('Poll completed!')
+	        await state.reset_state()  # Выход из состояния опроса
+
+Тут все точно так же, как и в случае с "message_handler", но только уже происходи обработка не текстового сообщения, а callback_query
+
+
+Послесловие
+^^^^^^^^^^^
+
+Какой бы сложности не была схема, взаимодействие с "UniTurnip" не как не изменится.
