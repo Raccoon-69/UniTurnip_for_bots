@@ -202,80 +202,81 @@ Arrays = {
     }
 }
 
-Custom = {
-    "title": "A list of tasks",
+dependencies = {
+    "title": "Schema dependencies",
+    "description": "These samples are best viewed without live validation.",
     "type": "object",
-    "required": [
-        "title"
-    ],
     "properties": {
-        "defaultsAndMinItems": {
-            "type": "array",
-            "title": "List and item level defaults",
-            "minItems": 2,
-            "items": {
-                "type": "string",
-                "default": "unidentified"
-            }
-        },
-        "task": {
-            "type": "array",
-            "title": "Tasks",
-            "items": {
-                "type": "object",
-                "required": [
-                    "title"
-                ],
-                "properties": {
-                    "title": {
-                        "type": "string",
-                        "title": "Title",
-                        "description": "A sample title"
-                    },
-                    "details": {
-                        "type": "string",
-                        "title": "Task details",
-                        "description": "Enter the task details"
-                    },
-                    "done": {
-                        "type": "boolean",
-                        "title": "Done?"
-                    }
+        "conditional": {
+            "title": "Conditional",
+            "$ref": "#/definitions/person"
+        }
+    },
+    "definitions": {
+        "person": {
+            "title": "Person",
+            "type": "object",
+            "properties": {
+                "Do you have any pets?": {
+                    "type": "string",
+                    "enum": [
+                        "No",
+                        "Yes: One",
+                        "Yes: More than one"
+                    ],
+                    "default": "No"
                 }
-            }
-        },
-        "fixedItemsList": {
-            "type": "array",
-            "title": "A list of fixed items",
-            "items": [
-                {
-                    "title": "A string value",
-                    "type": "string"
-                },
-                {
-                    "title": "a boolean value",
-                    "type": "boolean"
-                }
+            },
+            "required": [
+                "Do you have any pets?"
             ],
-            "additionalItems": {
-                "title": "Additional item",
-                "type": "number"
-            }
-        },
-        "multipleChoicesList": {
-            "type": "array",
-            "title": "A multiple choices list",
-            "items": {
-                "type": "string",
-                "enum": [
-                    "foo",
-                    "bar",
-                    "fuzz",
-                    "qux"
-                ]
+            "dependencies": {
+                "Do you have any pets?": {
+                    "oneOf": [
+                        {
+                            "properties": {
+                                "Do you have any pets?": {
+                                    "enum": [
+                                        "No"
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "properties": {
+                                "Do you have any pets?": {
+                                    "enum": [
+                                        "Yes: One"
+                                    ]
+                                },
+                                "How old is your pet?": {
+                                    "type": "number"
+                                }
+                            },
+                            "required": [
+                                "How old is your pet?"
+                            ]
+                        },
+                        {
+                            "properties": {
+                                "Do you have any pets?": {
+                                    "enum": [
+                                        "Yes: More than one"
+                                    ]
+                                },
+                                "Do you want to get rid of any?": {
+                                    "type": "boolean"
+                                }
+                            },
+                            "required": [
+                                "Do you want to get rid of any?"
+                            ]
+                        }
+                    ]
+                }
             }
         }
     }
 }
 
-DEFAULT_SCHEME = Custom
+DEFAULT_SCHEME = Simple
