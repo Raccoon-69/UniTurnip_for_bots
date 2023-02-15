@@ -1,9 +1,9 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
-def create_custom_keyboards(settings, required=None):
+def get_keyboards(settings, required=None):
     if 'enum' in settings.keys():
-        get_custom_keyboard(settings, [settings['type'], 'custom'], required=required)
+        return get_custom_keyboard(settings, [settings['type'], 'custom'], required=required)
     elif settings['type'] == 'string':
         return assembly_and_required_button(settings, [[]], ['string'], required=required)
     elif settings['type'] == 'integer':
@@ -52,7 +52,6 @@ def get_custom_keyboard(settings, keyboard_type, required=None):
     buttons = [[]]
     for key in settings['enum']:
         buttons[0] += [InlineKeyboardButton(text=key, callback_data=f'UniTurnip_{key}')]
-    keyboard_type += ['custom']
     return assembly_and_required_button(settings, buttons, keyboard_type, required=required)
 
 
@@ -79,20 +78,30 @@ def get_number_button():
 
 def assembly_and_required_button(settings, buttons, keyboard_type, required=None):
     if required is not None:
-        if required:
-            return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
+        if not buttons[0] or not buttons[0][0]:
+            if required:
+                return None, keyboard_type
+            else:
+                return assembly_with_skip_button(buttons, keyboard_type)
         else:
+            if required:
+                return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
+            else:
+                return assembly_with_skip_button(buttons, keyboard_type)
+    else:
+        if not buttons[0] or not buttons[0][0]:
+            if not settings['required'] and 'minItems' not in settings.keys():
+                return assembly_with_skip_button(buttons, keyboard_type)
+            else:
+                return None, keyboard_type
+        elif not settings['required'] and 'minItems' not in settings.keys():
             return assembly_with_skip_button(buttons, keyboard_type)
-    elif not settings['required'] and 'minItems' not in settings.keys():
-        return assembly_with_skip_button(buttons, keyboard_type)
-    elif buttons[0][0]:
-        return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
-    return None, keyboard_type
+        else:
+            return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
 
 
 def assembly_with_skip_button(buttons, keyboard_type):
     buttons += [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
-    keyboard_type += ['cancel']
     return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
 
 
