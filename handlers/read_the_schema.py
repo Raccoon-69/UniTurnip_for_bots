@@ -1,4 +1,5 @@
 from UniTurnip_for_bots.handlers.tools import merge_dict
+from UniTurnip_for_bots.handlers.inline_keyboards import get_keyboards
 
 
 class SchemaRead:
@@ -60,7 +61,7 @@ class SchemaRead:
     def read_base_type(self, string_key, schema, object_data, required_=None):
         question_data = self.create_question(schema, object_data)
         question_data['required'] = required(object_data, string_key, required_=required_)
-        # question_data = required_keyboard(question_data)
+        question_data = get_keyboards(question_data)
         return question_data
 
     # ----------------------------------------------------------------

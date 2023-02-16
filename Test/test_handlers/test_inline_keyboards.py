@@ -28,10 +28,8 @@ class TestInlineKeyboardsFile(TestCase):
             'type': 'string',
         }
         cancel_button = [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
-        correct_answer = (
-            InlineKeyboardMarkup(inline_keyboard=cancel_button),
-            ['string']
-        )
+        correct_answer = {'with_skip': (InlineKeyboardMarkup(inline_keyboard=cancel_button), ['string']),
+                          'without_skip': (None, ['string'])}
         self.assertEqual(get_keyboards(settings), correct_answer)
         settings = {
             'required': True,
@@ -75,16 +73,12 @@ class TestInlineKeyboardsFile(TestCase):
                 InlineKeyboardButton(text='second', callback_data='UniTurnip_second'),
                 InlineKeyboardButton(text='third', callback_data='UniTurnip_third')
             ],
-            [
-                InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')
-            ]
         ]
-        correct_answer = (
-            InlineKeyboardMarkup(inline_keyboard=buttons),
-            ['string', 'custom']
-        )
+        with_skip = buttons + [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
+        correct_answer = {'with_skip': (InlineKeyboardMarkup(inline_keyboard=with_skip), ['string', 'custom']),
+                          'without_skip': (InlineKeyboardMarkup(inline_keyboard=buttons), ['string', 'custom'])}
+        print(correct_answer)
         self.assertEqual(get_keyboards(settings), correct_answer)
-
 
         # ========== type boolean ==========
         settings = {
@@ -111,17 +105,15 @@ class TestInlineKeyboardsFile(TestCase):
             'type': 'boolean',
             'required': False
         }
-        keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(text='Yes', callback_data='UniTurnipTrue'),
-                    InlineKeyboardButton(text='No', callback_data='UniTurnipFalse')
-                ],
-                [
-                    InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')
-                ]
-            ])
-        correct_answer = (keyboard, ['boolean'])
+        buttons = [
+            [
+                InlineKeyboardButton(text='Yes', callback_data='UniTurnipTrue'),
+                InlineKeyboardButton(text='No', callback_data='UniTurnipFalse')
+            ],
+        ]
+        with_skip = buttons + [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
+        correct_answer = {'with_skip': (InlineKeyboardMarkup(inline_keyboard=with_skip), ['boolean']),
+                          'without_skip': (InlineKeyboardMarkup(inline_keyboard=buttons), ['boolean'])}
         self.assertEqual(get_keyboards(settings), correct_answer)
         settings = {
             'type': 'boolean',

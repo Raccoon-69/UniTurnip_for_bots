@@ -31,7 +31,7 @@ def get_integer_keyboard(settings, keyboard_type, whole_numbers=True, required=N
             [
                 InlineKeyboardButton(text='C', callback_data='UniTurnipClear'),
                 InlineKeyboardButton(text='0', callback_data='UniTurnip0'),
-                InlineKeyboardButton(text=',', callback_data='UniTurnipFurtherComma')
+                InlineKeyboardButton(text=',', callback_data='UniTurnipComma')
             ],
             [
                 InlineKeyboardButton(text='>>>', callback_data='UniTurnipFurther')
@@ -101,8 +101,12 @@ def assembly_and_required_button(settings, buttons, keyboard_type, required=None
 
 
 def assembly_with_skip_button(buttons, keyboard_type):
-    buttons += [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
-    return InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type
+    with_skip_button = buttons + [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
+    if not buttons[0] or not buttons[0][0]:
+        return {'with_skip': (InlineKeyboardMarkup(inline_keyboard=with_skip_button), keyboard_type),
+                'without_skip': (None, keyboard_type)}
+    return {'with_skip': (InlineKeyboardMarkup(inline_keyboard=with_skip_button), keyboard_type),
+            'without_skip': (InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type)}
 
 
 def keyboard_for_more_q():
