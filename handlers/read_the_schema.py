@@ -246,7 +246,7 @@ def write_in_the_stencil(schema, what_to_write__key, what_to_write__value):
 
 
 if __name__ == '__main__':
-    from UniTurnip_for_bots.handlers.constants import dependencies
+    from UniTurnip_for_bots.handlers.constants import Arrays  # dependencies
 
     def print_with_indent(indent, string=None, line_break=False):
         print('    ' * indent, end='')
@@ -263,7 +263,7 @@ if __name__ == '__main__':
 
     def print_result(result, start=False, indent=0):
         if start:
-            print(f'result = {result}\n')
+            print(f'result:\n{result}\n')
         for res in result:
             if type(res) == tuple:
                 if type(res[1]) == dict:
@@ -277,7 +277,7 @@ if __name__ == '__main__':
             else:
                 print_with_indent(indent, string=res)
 
-    schema = dependencies
+    schema = Arrays
     Schema = SchemaRead(schema)
 
     print_result(Schema.get(), start=True)
