@@ -61,7 +61,7 @@ class SchemaRead:
     def read_base_type(self, string_key, schema, object_data, required_=None):
         question_data = self.create_question(schema, object_data)
         question_data['required'] = required(object_data, string_key, required_=required_)
-        question_data = get_keyboards(question_data)
+        question_data['keyboard'], question_data['settings'] = get_keyboards(question_data)
         return question_data
 
     # ----------------------------------------------------------------
@@ -115,6 +115,8 @@ class SchemaRead:
             object_data['main_title'] = object['title']
         if 'description' in object.keys():
             object_data['main_description'] = object['description']
+        if 'minItems' in object.keys():
+            object_data['minItems'] = object['minItems']
         return object_data
 
     # ----------------------------------------------------------------
@@ -270,6 +272,7 @@ if __name__ == '__main__':
                     print_with_indent(indent, string=res[0])
                     print_with_indent(indent, string=res[1])
                 elif type(res[1]) == list:
+                    print(result)
                     print_frame(indent, len(res[0]), new_string=True)
                     print_with_indent(indent, string=f'| {res[0]} | ({indent})')
                     print_frame(indent, len(res[0]))
@@ -280,5 +283,6 @@ if __name__ == '__main__':
     schema = Arrays
     Schema = SchemaRead(schema)
 
-    print_result(Schema.get(), start=True)
+    questions_array, stencil = Schema.get()
+    print_result(questions_array, start=True)
 
