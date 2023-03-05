@@ -7,7 +7,8 @@ class State:
     def initialization(self):
         self.processing = True
         current_question, self.current_state_num = get_question(self.questions_list)
-        return current_question
+        state_name = get_state_name(self.questions_list, self.current_state_num)
+        return current_question, state_name
 
     def next(self):
         self.current_state_num[-1] += 1
@@ -20,18 +21,19 @@ class State:
     def question(self):
         if self.current_main_q_in_list():
             question = get_current_question(self.questions_list, self.current_state_num)
+            state_name = get_state_name(self.questions_list, self.current_state_num)
             if question == []:
                 return self.end()
             if type(question) == list:
                 current_question, current_state_num = get_question(question)
                 self.current_state_num += current_state_num
-                return current_question
+                return check_state_and_question(state_name, current_question)
             elif type(question) == tuple:
                 if type(question[1]) == list:
                     current_question, current_state_num = get_question(question[1])
                     self.current_state_num += [1] + current_state_num
-                    return current_question
-            return question
+                    return check_state_and_question(state_name, current_question)
+            return check_state_and_question(state_name, question)
         else:
             if len(self.current_state_num) == 1:
                 return self.next()
@@ -51,6 +53,20 @@ class State:
             return -1 < curr_main_q_num <= len(self.questions_list)
         questions_list = get_current_question(self.questions_list, self.current_state_num)
         return -1 < curr_main_q_num <= len(questions_list)
+
+
+def tuple_unpack(tuple_schema):
+    if type(tuple_schema) == dict:
+        return '', tuple_schema
+    if type(tuple_schema[0]) == str:
+        if type(tuple_schema[1]) == dict:
+            return tuple_schema
+        else:
+            raise TypeError(type(tuple_schema), tuple_schema)
+    elif type(tuple_schema[0]) == tuple:
+        return tuple_unpack(tuple_schema[0])
+    else:
+        raise TypeError(type(tuple_schema))
 
 
 def get_question(questions):
@@ -75,6 +91,35 @@ def get_current_question(question, num):
     elif type(num) == int:
         return question[num]
     return question
+
+
+def get_state_name(question, num):
+    if type(num) == list:
+        if len(num) != 0:
+            if len(question) <= num[0]:
+                return []
+            if type(question[num[0]]) == tuple:
+                return [question[num[0]][0]] + get_state_name(question[num[0]], num[1:])
+            else:
+                return get_state_name(question[num[0]], num[1:])
+    elif type(num) == int:
+        if type(question[num]) == tuple:
+            return [question[num][0]]
+    return []
+
+
+def check_state_and_question(state_name, question):
+    if type(question) == dict:
+        return state_name, question
+    elif type(question) == tuple:
+        state, question_res = check_state_and_question([], question[1])
+        if question[0] not in state_name:
+            state_name += [question[0]]
+        if state and state not in state_name:
+            state_name += state
+        return state_name, question_res
+    else:
+        raise TypeError(type(question), question)
 
 
 if __name__ == '__main__':
