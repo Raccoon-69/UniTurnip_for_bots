@@ -24,7 +24,7 @@ class State:
             state_name = get_state_name(self.questions_list, self.current_state_num)
             if question == []:
                 return self.end()
-            if type(question) == list:
+            elif type(question) == list:
                 current_question, current_state_num = get_question(question)
                 self.current_state_num += current_state_num
                 return check_state_and_question(state_name, current_question)
@@ -35,6 +35,7 @@ class State:
                     return check_state_and_question(state_name, current_question)
             return check_state_and_question(state_name, question)
         else:
+
             if len(self.current_state_num) == 1:
                 return self.next()
             self.current_state_num = self.current_state_num[:-1]
@@ -53,6 +54,13 @@ class State:
             return -1 < curr_main_q_num <= len(self.questions_list)
         questions_list = get_current_question(self.questions_list, self.current_state_num)
         return -1 < curr_main_q_num <= len(questions_list)
+
+    def return_last_question_or_no(self):
+        curr_main_q_num = self.current_state_num[-1]
+        if len(self.current_state_num) == 1:
+            return -1 < curr_main_q_num == len(self.questions_list)
+        questions_list = get_current_question(self.questions_list, self.current_state_num)
+        return -1 < curr_main_q_num == len(questions_list)
 
 
 def tuple_unpack(tuple_schema):
