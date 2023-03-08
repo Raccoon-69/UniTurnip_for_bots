@@ -35,7 +35,7 @@ class SchemaRead:
     # ====================| Read differance type |====================
     # ================================================================
     def read_object(self, object, last_key=None, last_object_data=None):
-        object_data = self.create_object_data(object, last_key=last_key, last_object_data=last_object_data)
+        object_data = self.create_object_data(object, last_key, last_object_data=last_object_data)
         if 'properties' in object.keys():
             return self.unpack_object(object['properties'], object_data)
         elif 'items' in object.keys():
@@ -45,7 +45,7 @@ class SchemaRead:
 
     # ----------------------------------------------------------------
     def read_array(self, array_key, array, last_object_data):
-        current_object_data = self.create_object_data(array, last_key=array_key, last_object_data=last_object_data)
+        current_object_data = self.create_object_data(array, array_key, last_object_data=last_object_data)
         if type(array['items']) == dict:
             return self.type_fork(array['items'], key=array_key, object_data=current_object_data)
         elif type(array['items']) == list:
@@ -99,14 +99,11 @@ class SchemaRead:
         return merge_dict(question, object_data)
 
     # ----------------------------------------------------------------
-    def create_object_data(self, object, last_key=None, last_object_data=None):
-        object_data = {
-            'main_type': 'object',
-            'required': [] if 'required' not in object.keys() else object['required']
-        }
-        if last_key:
-            object_data['last_key'] = last_key
-            object_data['last_object_data'] = last_object_data
+    def create_object_data(self, object, last_key, last_object_data=None):
+        object_data = {'required': [] if 'required' not in object.keys() else object['required'],
+                       'last_key': last_key,
+                       'last_object_data': last_object_data,
+                       'last_type': '' if 'type' not in object.keys() else object['type']}
         if 'dependencies' in object.keys():
             object_data['dependencies'] = self.read_dependencies(object['dependencies'])
         if 'required' in object.keys():
