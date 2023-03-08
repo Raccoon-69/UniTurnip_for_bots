@@ -20,6 +20,7 @@ class State:
 
     def question(self):
         if self.current_main_q_in_list():
+            # check - give last question or no
             question = get_current_question(self.questions_list, self.current_state_num)
             state_name = get_state_name(self.questions_list, self.current_state_num)
             if question == []:
@@ -35,7 +36,8 @@ class State:
                     return check_state_and_question(state_name, current_question)
             return check_state_and_question(state_name, question)
         else:
-
+            if self.return_last_question_or_no():
+                return question__do_you_need_more_question_or_no()
             if len(self.current_state_num) == 1:
                 return self.next()
             self.current_state_num = self.current_state_num[:-1]
@@ -56,11 +58,37 @@ class State:
         return -1 < curr_main_q_num <= len(questions_list)
 
     def return_last_question_or_no(self):
-        curr_main_q_num = self.current_state_num[-1]
-        if len(self.current_state_num) == 1:
-            return -1 < curr_main_q_num == len(self.questions_list)
-        questions_list = get_current_question(self.questions_list, self.current_state_num)
-        return -1 < curr_main_q_num == len(questions_list)
+        if type(self.current_state_num) == int:
+            return False
+        self.current_state_num[-1] -= 1
+        if self.current_main_q_in_list():
+            self.current_state_num[-1] += 1
+            question = get_current_question(self.questions_list, self.current_state_num[:-1])
+            question = check_question(question)
+            print(question)
+            input()
+            if info := question_type_is_array(question):
+                if info == len(self.current_state_num):
+                    return True
+        return False
+
+
+def question__do_you_need_more_question_or_no():
+    question = {
+        'question': 'Do you need the last question again?',
+        'type': 'more_q'}
+    return ['more_q'], question
+
+
+def question_type_is_array(question):
+    if 'type' in question.keys() and question['type'] == 'array':
+        return 0
+    elif 'main_type' in question.keys() and question['main_type'] == 'array':
+        return 0
+    elif 'last_object_data' in question.keys():
+        return question_type_is_array(question['last_object_data']) + 1
+    else:
+        return False
 
 
 def tuple_unpack(tuple_schema):
@@ -126,6 +154,17 @@ def check_state_and_question(state_name, question):
         if state and state not in state_name:
             state_name += state
         return state_name, question_res
+    else:
+        raise TypeError(type(question), question)
+
+
+def check_question(question):
+    if type(question) == tuple:
+        return check_question(question[1])
+    elif type(question) == list:
+        return check_question(question[-1])
+    elif type(question) == dict:
+        return question
     else:
         raise TypeError(type(question), question)
 
