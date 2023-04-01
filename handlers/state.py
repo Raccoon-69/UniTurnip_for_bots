@@ -3,12 +3,14 @@ class State:
         self.current_state_num = [0]
         self.questions_list = questions_list
         self.processing = None
+        self.current_question = None
+        self.last_question_key = None
 
     def initialization(self):
         self.processing = True
         current_question, self.current_state_num = get_question(self.questions_list)
         state_name = get_state_name(self.questions_list, self.current_state_num)
-        return current_question, state_name
+        return self.question_result(state_name, current_question)
 
     def next(self):
         self.current_state_num[-1] += 1
@@ -18,18 +20,34 @@ class State:
         self.current_state_num[-1] -= 1
         return self.question()
 
+    def more_q__answer(self, move):
+        return self.more_q_processing(move)
+
+    def end(self):
+        self.processing = False
+        self.current_state_num = None
+        return None
+
     def question(self):
         if self.current_main_q_in_list():
-            # check - give last question or no
             question = get_current_question(self.questions_list, self.current_state_num)
             state_name = get_state_name(self.questions_list, self.current_state_num)
             if question == []:
                 return self.end()
             elif type(question) == list:
+                if self.last_question_key != state_name[-1] and self.last_question_key != 'more_q':
+                    self.last_question_key = state_name[-1]
+                    return self.question__do_you_need_more_question_or_no()
+                self.last_question_key = state_name[-1]
                 current_question, current_state_num = get_question(question)
                 self.current_state_num += current_state_num
                 return check_state_and_question(state_name, current_question)
             elif type(question) == tuple:
+                if self.return_last_question_or_no(main=True):
+                    if self.last_question_key != question[0] and self.last_question_key != 'more_q':
+                        self.last_question_key = question[0]
+                        return self.question__do_you_need_more_question_or_no()
+                    self.last_question_key = question[0]
                 if type(question[1]) == list:
                     current_question, current_state_num = get_question(question[1])
                     self.current_state_num += [1] + current_state_num
@@ -37,58 +55,74 @@ class State:
             return check_state_and_question(state_name, question)
         else:
             if self.return_last_question_or_no():
-                return question__do_you_need_more_question_or_no()
+                self.current_state_num[-1] += 1
+                self.last_question_key = 'more_q'
+                return self.question__do_you_need_more_question_or_no()
             if len(self.current_state_num) == 1:
-                return self.next()
+                if -1 > self.current_state_num[0] > len(self.questions_list):
+                    return self.next()
+                else:
+                    return self.end()
             self.current_state_num = self.current_state_num[:-1]
             if type(self.current_state_num) == int:
                 return self.end()
+            self.current_state_num = self.current_state_num[:-1]
+            self.current_state_num[-1] += 1
             return self.next()
 
-    def end(self):
-        self.processing = False
-        self.current_state_num = None
-        return None
+    def more_q_processing(self, move=None):
+        if move is None:
+            more_q = self.question__do_you_need_more_question_or_no()
+            return self.question_result('more_q', more_q)
+        else:
+            if move == 'UniTurnipMore':
+                self.current_state_num = self.current_state_num[:-1]
+                self.current_state_num[-1] -= 1
+                return self.next()
+            else:
+                return self.next()
 
-    def current_main_q_in_list(self):
+    def current_main_q_in_list(self, is_last_question=False):
         curr_main_q_num = self.current_state_num[-1]
+        if is_last_question:
+            questions_list = get_current_question(self.questions_list, self.current_state_num[:-1])
+            return curr_main_q_num == len(questions_list)
         if len(self.current_state_num) == 1:
             return -1 < curr_main_q_num <= len(self.questions_list)
         questions_list = get_current_question(self.questions_list, self.current_state_num)
         return -1 < curr_main_q_num <= len(questions_list)
 
-    def return_last_question_or_no(self):
-        if type(self.current_state_num) == int:
-            return False
-        self.current_state_num[-1] -= 1
-        if self.current_main_q_in_list():
-            self.current_state_num[-1] += 1
+    def return_last_question_or_no(self, main=False):
+        if self.current_main_q_in_list(is_last_question=True) or main:
             question = get_current_question(self.questions_list, self.current_state_num[:-1])
             question = check_question(question)
-            print(question)
-            input()
-            if info := question_type_is_array(question):
-                if info == len(self.current_state_num):
-                    return True
+            return question_type_is_array(question)
         return False
 
+    def question_result(self, state, question):
+        if state == 'more_q':
+            self.current_question = question
+        else:
+            self.current_question = check_state_and_question(state, question)
+        return self.current_question
 
-def question__do_you_need_more_question_or_no():
-    question = {
-        'question': 'Do you need the last question again?',
-        'type': 'more_q'}
-    return ['more_q'], question
+    def question__do_you_need_more_question_or_no(self):
+        self.current_state_num[-1] -= 1
+        question = {
+            'question': 'Do you need the last question again?',
+            'type': 'more_q'}
+        return ['more_q'], question
 
 
 def question_type_is_array(question):
-    if 'type' in question.keys() and question['type'] == 'array':
-        return 0
-    elif 'main_type' in question.keys() and question['main_type'] == 'array':
-        return 0
-    elif 'last_object_data' in question.keys():
-        return question_type_is_array(question['last_object_data']) + 1
-    else:
-        return False
+    if type(question) == dict:
+        if 'type' in question.keys() and question['type'] == 'array':
+            return True
+        elif 'last_type' in question.keys() and question['last_type'] == 'array':
+            return True
+        elif 'last_object_data' in question.keys():
+            return question_type_is_array(question['last_object_data'])
+    return False
 
 
 def tuple_unpack(tuple_schema):
@@ -172,7 +206,7 @@ def check_question(question):
 if __name__ == '__main__':
     Simple = [('firstName', (None, ['string'])), ('lastName', (None, ['string'])), ('telephone', {'with_skip': ({"inline_keyboard": [[], [{"text": "Skip", "callback_data": "UniTurnipCancel"}]]}, ['string']), 'without_skip': (None, ['string'])})]
     Nested = [('first', (None, ['string'])), ('tasks', [('title', (None, ['string'])), ('details', {'with_skip': ({"inline_keyboard": [[], [{"text": "Skip", "callback_data": "UniTurnipCancel"}]]}, ['string']), 'without_skip': (None, ['string'])}), ('done', {'with_skip': ({"inline_keyboard": [[{"text": "Yes", "callback_data": "UniTurnipTrue"}, {"text": "No", "callback_data": "UniTurnipFalse"}], [{"text": "Skip", "callback_data": "UniTurnipCancel"}]]}, ['boolean']), 'without_skip': ({"inline_keyboard": [[{"text": "Yes", "callback_data": "UniTurnipTrue"}, {"text": "No", "callback_data": "UniTurnipFalse"}]]}, ['boolean'])})])]
-    Arrays = [('listOfStrings', {'type': 'string', 'default': 'bazinga', 'question': 'A list of strings', 'main_type': 'object', 'required': False, 'last_key': 'listOfStrings', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'A list of strings', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('multipleChoicesList', {'type': 'string', 'enum': ['foo', 'bar', 'fuzz', 'qux'], 'question': 'A multiple choices list', 'main_type': 'object', 'required': False, 'last_key': 'multipleChoicesList', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'A multiple choices list', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('fixedItemsList', [{'title': 'A string value', 'type': 'string', 'default': 'lorem ipsum', 'question': 'A string value', 'main_type': 'object', 'required': True, 'last_key': 'fixedItemsList', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'A list of fixed items', 'keyboard': None, 'settings': ['string']}, {'title': 'a boolean value', 'type': 'boolean', 'question': 'a boolean value', 'main_type': 'object', 'required': True, 'last_key': 'fixedItemsList', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'A list of fixed items', 'keyboard': {"inline_keyboard": [[{"text": "Yes", "callback_data": "UniTurnipTrue"}, {"text": "No", "callback_data": "UniTurnipFalse"}]]}, 'settings': ['boolean']}, {'title': 'Additional item', 'type': 'number', 'question': 'Additional item', 'main_type': 'object', 'required': False, 'last_key': 'fixedItemsList', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'A list of fixed items', 'keyboard': 'with_skip', 'settings': 'without_skip'}]), ('minItemsList', [('name', {'type': 'string', 'default': 'Default name', 'question': 'A list with a minimal number of items', 'main_type': 'object', 'required': False, 'last_key': 'minItemsList', 'last_object_data': {'main_type': 'object', 'required': [], 'last_key': 'minItemsList', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'A list with a minimal number of items'}, 'keyboard': 'with_skip', 'settings': 'without_skip'})]), ('defaultsAndMinItems', {'type': 'string', 'default': 'unidentified', 'question': 'List and item level defaults', 'main_type': 'object', 'required': False, 'last_key': 'defaultsAndMinItems', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'List and item level defaults', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('nestedList', {'type': 'string', 'default': 'lorem ipsum', 'question': 'Inner list', 'main_type': 'object', 'required': False, 'last_key': 'nestedList', 'last_object_data': {'main_type': 'object', 'required': [], 'last_key': 'nestedList', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'Nested list'}, 'main_title': 'Inner list', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('unorderable', {'type': 'string', 'default': 'lorem ipsum', 'question': 'Unorderable items', 'main_type': 'object', 'required': False, 'last_key': 'unorderable', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'Unorderable items', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('unremovable', {'type': 'string', 'default': 'lorem ipsum', 'question': 'Unremovable items', 'main_type': 'object', 'required': False, 'last_key': 'unremovable', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'Unremovable items', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('noToolbar', {'type': 'string', 'default': 'lorem ipsum', 'question': 'No add, remove and order buttons', 'main_type': 'object', 'required': False, 'last_key': 'noToolbar', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'No add, remove and order buttons', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('fixedNoToolbar', [{'title': 'A number', 'type': 'number', 'default': 42, 'question': 'A number', 'main_type': 'object', 'required': True, 'last_key': 'fixedNoToolbar', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'Fixed array without buttons', 'keyboard': {"inline_keyboard": [[{"text": "1", "callback_data": "UniTurnip1"}, {"text": "2", "callback_data": "UniTurnip2"}, {"text": "3", "callback_data": "UniTurnip3"}], [{"text": "4", "callback_data": "UniTurnip4"}, {"text": "5", "callback_data": "UniTurnip5"}, {"text": "6", "callback_data": "UniTurnip6"}], [{"text": "7", "callback_data": "UniTurnip7"}, {"text": "8", "callback_data": "UniTurnip8"}, {"text": "9", "callback_data": "UniTurnip9"}], [{"text": "C", "callback_data": "UniTurnipClear"}, {"text": "0", "callback_data": "UniTurnip0"}, {"text": ">>>", "callback_data": "UniTurnipFurther"}]]}, 'settings': ['number']}, {'title': 'A boolean', 'type': 'boolean', 'default': False, 'question': 'A boolean', 'main_type': 'object', 'required': True, 'last_key': 'fixedNoToolbar', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'Fixed array without buttons', 'keyboard': {"inline_keyboard": [[{"text": "Yes", "callback_data": "UniTurnipTrue"}, {"text": "No", "callback_data": "UniTurnipFalse"}]]}, 'settings': ['boolean']}, {'title': 'A string', 'type': 'string', 'default': 'lorem ipsum', 'question': 'A string', 'main_type': 'object', 'required': False, 'last_key': 'fixedNoToolbar', 'last_object_data': {'main_type': 'object', 'required': []}, 'main_title': 'Fixed array without buttons', 'keyboard': 'with_skip', 'settings': 'without_skip'}])]
+    Arrays = [('listOfStrings', {'type': 'string', 'default': 'bazinga', 'question': 'A list of strings', 'required': False, 'last_key': 'listOfStrings', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'A list of strings', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('multipleChoicesList', {'type': 'string', 'enum': ['foo', 'bar', 'fuzz', 'qux'], 'question': 'A multiple choices list', 'required': False, 'last_key': 'multipleChoicesList', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'A multiple choices list', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('fixedItemsList', [{'title': 'A string value', 'type': 'string', 'default': 'lorem ipsum', 'question': 'A string value', 'required': True, 'last_key': 'fixedItemsList', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'A list of fixed items', 'keyboard': None, 'settings': ['string']}, {'title': 'a boolean value', 'type': 'boolean', 'question': 'a boolean value', 'required': True, 'last_key': 'fixedItemsList', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'A list of fixed items', 'keyboard': {"inline_keyboard": [[{"text": "Yes", "callback_data": "UniTurnipTrue"}, {"text": "No", "callback_data": "UniTurnipFalse"}]]}, 'settings': ['boolean']}, {'title': 'Additional item', 'type': 'number', 'question': 'Additional item', 'required': False, 'last_key': 'fixedItemsList', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'A list of fixed items', 'keyboard': 'with_skip', 'settings': 'without_skip'}]), ('minItemsList', [('name', {'type': 'string', 'default': 'Default name', 'question': 'A list with a minimal number of items', 'required': False, 'last_key': 'minItemsList', 'last_object_data': {'required': [], 'last_key': 'minItemsList', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'A list with a minimal number of items', 'minItems': 3}, 'last_type': 'object', 'keyboard': 'with_skip', 'settings': 'without_skip'})]), ('defaultsAndMinItems', {'type': 'string', 'default': 'unidentified', 'question': 'List and item level defaults', 'required': False, 'last_key': 'defaultsAndMinItems', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'List and item level defaults', 'minItems': 5, 'keyboard': None, 'settings': ['string']}), ('nestedList', {'type': 'string', 'default': 'lorem ipsum', 'question': 'Inner list', 'required': False, 'last_key': 'nestedList', 'last_object_data': {'required': [], 'last_key': 'nestedList', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'Nested list'}, 'last_type': 'array', 'main_title': 'Inner list', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('unorderable', {'type': 'string', 'default': 'lorem ipsum', 'question': 'Unorderable items', 'required': False, 'last_key': 'unorderable', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'Unorderable items', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('unremovable', {'type': 'string', 'default': 'lorem ipsum', 'question': 'Unremovable items', 'required': False, 'last_key': 'unremovable', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'Unremovable items', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('noToolbar', {'type': 'string', 'default': 'lorem ipsum', 'question': 'No add, remove and order buttons', 'required': False, 'last_key': 'noToolbar', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'No add, remove and order buttons', 'keyboard': 'with_skip', 'settings': 'without_skip'}), ('fixedNoToolbar', [{'title': 'A number', 'type': 'number', 'default': 42, 'question': 'A number', 'required': True, 'last_key': 'fixedNoToolbar', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'Fixed array without buttons', 'keyboard': {"inline_keyboard": [[{"text": "1", "callback_data": "UniTurnip1"}, {"text": "2", "callback_data": "UniTurnip2"}, {"text": "3", "callback_data": "UniTurnip3"}], [{"text": "4", "callback_data": "UniTurnip4"}, {"text": "5", "callback_data": "UniTurnip5"}, {"text": "6", "callback_data": "UniTurnip6"}], [{"text": "7", "callback_data": "UniTurnip7"}, {"text": "8", "callback_data": "UniTurnip8"}, {"text": "9", "callback_data": "UniTurnip9"}], [{"text": "C", "callback_data": "UniTurnipClear"}, {"text": "0", "callback_data": "UniTurnip0"}, {"text": ">>>", "callback_data": "UniTurnipFurther"}]]}, 'settings': ['number']}, {'title': 'A boolean', 'type': 'boolean', 'default': False, 'question': 'A boolean', 'required': True, 'last_key': 'fixedNoToolbar', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'Fixed array without buttons', 'keyboard': {"inline_keyboard": [[{"text": "Yes", "callback_data": "UniTurnipTrue"}, {"text": "No", "callback_data": "UniTurnipFalse"}]]}, 'settings': ['boolean']}, {'title': 'A string', 'type': 'string', 'default': 'lorem ipsum', 'question': 'A string', 'required': False, 'last_key': 'fixedNoToolbar', 'last_object_data': {'required': [], 'last_key': None, 'last_object_data': None, 'last_type': 'object'}, 'last_type': 'array', 'main_title': 'Fixed array without buttons', 'keyboard': 'with_skip', 'settings': 'without_skip'}])]
 
     State = State(Arrays)
 
