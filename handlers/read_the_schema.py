@@ -61,7 +61,7 @@ class SchemaRead:
     def read_base_type(self, string_key, schema, object_data, required_=None):
         question_data = self.create_question(schema, object_data)
         question_data['required'] = required(object_data, string_key, required_=required_)
-        question_data['keyboard'], question_data['settings'] = get_keyboards(question_data)
+        question_data['keyboard'], question_data['keyboard_settings'] = get_keyboards(question_data)
         return question_data
 
     # ----------------------------------------------------------------

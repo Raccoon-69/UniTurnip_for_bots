@@ -1,16 +1,18 @@
 class State:
     def __init__(self, questions_list):
         self.current_state_num = [0]
+        self.current_state_name = None
         self.questions_list = questions_list
         self.processing = None
         self.current_question = None
         self.last_question_key = None
+        self.current_list_size = 0
 
     def initialization(self):
         self.processing = True
         current_question, self.current_state_num = get_question(self.questions_list)
         state_name = get_state_name(self.questions_list, self.current_state_num)
-        return self.question_result(state_name, current_question)
+        return self.state_and_question_result(state_name, current_question)
 
     def next(self):
         self.current_state_num[-1] += 1
@@ -37,7 +39,7 @@ class State:
             elif type(question) == list:
                 if self.last_question_key != state_name[-1] and self.last_question_key != 'more_q':
                     self.last_question_key = state_name[-1]
-                    return self.question__do_you_need_more_question_or_no()
+                    return self.state_and_question_result('more_q', '')
                 self.last_question_key = state_name[-1]
                 current_question, current_state_num = get_question(question)
                 self.current_state_num += current_state_num
@@ -46,18 +48,18 @@ class State:
                 if self.return_last_question_or_no(main=True):
                     if self.last_question_key != question[0] and self.last_question_key != 'more_q':
                         self.last_question_key = question[0]
-                        return self.question__do_you_need_more_question_or_no()
+                        return self.state_and_question_result('more_q', '')
                     self.last_question_key = question[0]
                 if type(question[1]) == list:
                     current_question, current_state_num = get_question(question[1])
                     self.current_state_num += [1] + current_state_num
-                    return check_state_and_question(state_name, current_question)
-            return check_state_and_question(state_name, question)
+                    return self.state_and_question_result(state_name, current_question)
+            return self.state_and_question_result(state_name, question)
         else:
             if self.return_last_question_or_no():
                 self.current_state_num[-1] += 1
                 self.last_question_key = 'more_q'
-                return self.question__do_you_need_more_question_or_no()
+                return self.state_and_question_result('more_q', '')
             if len(self.current_state_num) == 1:
                 if -1 > self.current_state_num[0] > len(self.questions_list):
                     return self.next()
@@ -72,8 +74,7 @@ class State:
 
     def more_q_processing(self, move=None):
         if move is None:
-            more_q = self.question__do_you_need_more_question_or_no()
-            return self.question_result('more_q', more_q)
+            return self.state_and_question_result('more_q', '')
         else:
             if move == 'UniTurnipMore':
                 self.current_state_num = self.current_state_num[:-1]
@@ -86,11 +87,14 @@ class State:
         curr_main_q_num = self.current_state_num[-1]
         if is_last_question:
             questions_list = get_current_question(self.questions_list, self.current_state_num[:-1])
-            return curr_main_q_num == len(questions_list)
+            self.current_list_size = len(questions_list)
+            return curr_main_q_num == self.current_list_size
         if len(self.current_state_num) == 1:
-            return -1 < curr_main_q_num <= len(self.questions_list)
+            self.current_list_size = len(self.questions_list)
+            return -1 < curr_main_q_num <= self.current_list_size
         questions_list = get_current_question(self.questions_list, self.current_state_num)
-        return -1 < curr_main_q_num <= len(questions_list)
+        self.current_list_size = len(questions_list)
+        return -1 < curr_main_q_num <= self.current_list_size
 
     def return_last_question_or_no(self, main=False):
         if self.current_main_q_in_list(is_last_question=True) or main:
@@ -99,19 +103,20 @@ class State:
             return question_type_is_array(question)
         return False
 
-    def question_result(self, state, question):
+    def state_and_question_result(self, state, question):
+        self.current_state_name = state
         if state == 'more_q':
-            self.current_question = question
+            state_and_question = question__do_you_need_more_question_or_no()
         else:
-            self.current_question = check_state_and_question(state, question)
-        return self.current_question
+            state_and_question = check_state_and_question(state, question)
+        return state_and_question
 
-    def question__do_you_need_more_question_or_no(self):
-        self.current_state_num[-1] -= 1
-        question = {
-            'question': 'Do you need the last question again?',
-            'type': 'more_q'}
-        return ['more_q'], question
+
+def question__do_you_need_more_question_or_no():
+    question = {
+        'question': 'Do you need the last question again?',
+        'type': 'more_q'}
+    return ['more_q'], question
 
 
 def question_type_is_array(question):
