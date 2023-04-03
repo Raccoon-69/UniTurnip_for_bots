@@ -97,6 +97,10 @@ class UniTurnip:
         else:
             self.back()
 
+    def save_and_next(self, answer):
+        self.SaveUserAnswer.save(answer, self.all_user_answers, self.current_state_name, self.State.current_list_size)
+        self.next()
+
     # ===========================================================================
     # ===========================================================================
     # ===========================================================================
@@ -108,7 +112,7 @@ class UniTurnip:
         }
         self.current_state_name, self.current_question = all_moves[key]()
         self.current_list_size = self.State.current_list_size
-        if self.current_question:
+        if self.State.processing:
             self.keyboard_check()
             print()
             print('=============| settings |=============')
@@ -121,20 +125,20 @@ class UniTurnip:
 
     def keyboard_check(self):
         if self.current_question['keyboard_settings'] == 'choice_skip_or_no':
-            if 'minLength' in self.current_question.keys():
-                pass
+            keyboard = self.current_question['keyboard']
+            if 'minItems' in self.current_question.keys():
+                if type(self.current_question['minItems']) == int:
+                    self.current_question['minItems'] = {
+                        'len': self.current_question['minItems'],
+                        'cur': 0
+                    }
+                min_length = self.current_question['minItems']
+                if min_length['len'] >= min_length['cur']:
+                    self.current_question['keyboard'] = keyboard['without_skip'][0]
+                    self.current_question['keyboard_settings'] = keyboard['without_skip'][1]
+                else:
+                    self.current_question['keyboard'] = keyboard['keyboard']['with_skip'][0]
+                    self.current_question['keyboard_settings'] = keyboard['keyboard']['with_skip'][1]
             else:
-                self.current_question['keyboard'] = self.current_question['keyboard']['with_skip']
-
-    def save_and_next(self, answer):
-        self.SaveUserAnswer.save(answer, self.all_user_answers, self.current_state_name, self.State.current_list_size)
-        if self.check_additional_param():
-            self.next()
-
-    def check_additional_param(self):
-        # if 'minItems' in self.current_question.keys():
-        #     if self.current_question['minItems'] >= self.State.current_state_num[2] + 2:
-        #         return self.next()
-        #     else:
-        #         return self.State.question__do_you_need_more_question_or_no()
-        return True
+                self.current_question['keyboard'] = keyboard['with_skip'][0]
+                self.current_question['keyboard_settings'] = keyboard['with_skip'][1]

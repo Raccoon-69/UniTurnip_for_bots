@@ -16,7 +16,7 @@ class StringResponseProcessing:
 
     def min_length(self):
         if 'minLength' in self.current_question.keys():
-            min_len = int(self.current_question['minLength'])
+            min_len = int(self.current_question['minLength']['len'])
             if len(self.user_answer) < min_len:
                 self.dict_with_func_from_main['back']()
             else:

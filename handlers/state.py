@@ -28,7 +28,7 @@ class State:
     def end(self):
         self.processing = False
         self.current_state_num = None
-        return None
+        return None, None
 
     def question(self):
         if self.current_main_q_in_list():
