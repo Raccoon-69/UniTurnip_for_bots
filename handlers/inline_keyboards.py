@@ -104,9 +104,9 @@ def assembly_with_skip_button(buttons, keyboard_type):
     with_skip_button = buttons + [[InlineKeyboardButton(text='Skip', callback_data='UniTurnipCancel')]]
     if not buttons[0] or not buttons[0][0]:
         return {'with_skip': (InlineKeyboardMarkup(inline_keyboard=with_skip_button), keyboard_type),
-                'without_skip': (None, keyboard_type)}
+                'without_skip': (None, keyboard_type)}, 'choice_skip_or_no'
     return {'with_skip': (InlineKeyboardMarkup(inline_keyboard=with_skip_button), keyboard_type),
-            'without_skip': (InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type)}
+            'without_skip': (InlineKeyboardMarkup(inline_keyboard=buttons), keyboard_type)}, 'choice_skip_or_no'
 
 
 def keyboard_for_more_q():

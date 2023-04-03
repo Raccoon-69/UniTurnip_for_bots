@@ -1,4 +1,4 @@
-from UniTurnip_for_bots.handlers.tools import merge_dict
+from UniTurnip_for_bots.handlers.tools.work_with_dict import merge_dict
 from UniTurnip_for_bots.handlers.inline_keyboards import get_keyboards
 
 
